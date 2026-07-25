@@ -108,7 +108,8 @@ public class StashCmd
         var cards = card.Owner.GetStash();
         var n = card.DynamicVars.Cards.IntValue;
         await CardPileCmd.Add(cards.Take(n).ToList(), PileType.Hand);
-        await Hook.AfterCardDrawn(card.CombatState, ctx, card, false);
+        
+        await Hook.AfterCardDrawn(card.Owner.Creature.CombatState, ctx, card, false);
     }
 
     public static async Task<IReadOnlyList<CardPileAddResult>> DrawFromStash(Player player, int n = 1)
