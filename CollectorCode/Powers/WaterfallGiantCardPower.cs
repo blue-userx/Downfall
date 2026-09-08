@@ -1,6 +1,5 @@
 ﻿using BaseLib.Extensions;
 using Collector.CollectorCode.Core;
-using Collector.CollectorCode.Extensions;
 using Downfall.DownfallCode.Commands;
 using Downfall.DownfallCode.Powers;
 using MegaCrit.Sts2.Core.Combat;
@@ -11,20 +10,18 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
 namespace Collector.CollectorCode.Powers;
 
-public class BygoneEffigyCardPower : CollectorPowerModel
+public class WaterfallGiantCardPower : CollectorPowerModel
 {
-
-    public BygoneEffigyCardPower()
+    
+    public WaterfallGiantCardPower()
     {
-        WithReserve(0);
-        WithPower<PlatedArmorPower>(0);
+        WithPower<MiasmaPower>(0);
     }
     
     
     public override PowerInstanceType InstanceType => PowerInstanceType.Instanced;
-
-    // before plated armor
-    public override async Task BeforeSideTurnEndEarly(
+    
+    public override async Task BeforeSideTurnEnd(
         PlayerChoiceContext ctx,
         CombatSide side,
         IEnumerable<Creature> participants)
@@ -38,15 +35,13 @@ public class BygoneEffigyCardPower : CollectorPowerModel
         else
         {
             Flash();
-            await CollectorCmd.GetReserve(this);
-            await MyCommonActions.ApplySelf<PlatedArmorPower>(ctx, this);
+            await MyCommonActions.Apply<MiasmaPower>(ctx, this, CombatState.HittableEnemies);
             await PowerCmd.Remove(this);
         }
     }
     
-    public void SetEffect(decimal baseValue)
+    public void SetMiasma(decimal baseValue)
     {
-        DynamicVars.Reserve.BaseValue = baseValue;
-        DynamicVars.Power<PlatedArmorPower>().BaseValue = baseValue;
+        DynamicVars.Power<MiasmaPower>().BaseValue = baseValue;
     }
 }
