@@ -4,6 +4,7 @@ using Automaton.AutomatonCode.CustomEnums;
 using Automaton.AutomatonCode.Powers;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -15,8 +16,8 @@ public class MaxOutput : AutomatonCardModel
     public MaxOutput() : base(0, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
         WithCards(2, 1);
-        this.WithTip<Error>();
-        this.WithPower<MaxOutputPower>(1, false);
+        WithTip<Error>();
+        WithPower<MaxOutputPower>(1, false);
         WithTip(AutomatonTip.Stash);
     }
 
@@ -24,6 +25,7 @@ public class MaxOutput : AutomatonCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await CommonActions.Draw(this, ctx);
         await CommonActions.ApplySelf<MaxOutputPower>(ctx, this);
     }

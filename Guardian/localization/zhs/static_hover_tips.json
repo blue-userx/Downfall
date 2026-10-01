@@ -2,7 +2,7 @@
     "GUARDIAN-ACCELERATE.title": "加速",
     "GUARDIAN-ACCELERATE.description": "减少[gold]凝滞[/gold]栏位中最右端的牌的计数。",
     "GUARDIAN-AGGRAVATE.title": "激化",
-    "GUARDIAN-AGGRAVATE.description": "当此牌进入战斗时，其耗能增加[blue]1[/blue]。",
+    "GUARDIAN-AGGRAVATE.description": "进入战斗时，此牌耗能增加[blue]1[/blue]。",
     "GUARDIAN-BRACE.title": "提防",
     "GUARDIAN-BRACE.description": "降低进入[gold]防御模式[/gold]所需的计数。",
     "GUARDIAN-DEFENSIVE_MODE.title": "防御模式",
@@ -10,11 +10,11 @@
     "GUARDIAN-PACKAGE.title": "组件",
     "GUARDIAN-PACKAGE.description": "一个组件包含三张卡牌，灵感来自于尖塔造物。",
     "GUARDIAN-POLISH.title": "抛光",
-    "GUARDIAN-POLISH.description": "移除你的[gold]虚弱[/gold]、[gold]脆弱[/gold]和[gold]易伤[/gold]各X层。\n将X层临时增益转化为永久增益。",
+    "GUARDIAN-POLISH.description": "移除相应层数的[gold]虚弱[/gold]、[gold]脆弱[/gold]和[gold]易伤[/gold]。\n将相应层数的临时增益转化为永久增益。",
     "GUARDIAN-SOCKET.title": "槽位",
-    "GUARDIAN-SOCKET.description": "[gold]宝石[/gold]能够被镶嵌至有槽位的牌上。",
+    "GUARDIAN-SOCKET.description": "能够在休息处镶嵌一张[gold]宝石[/gold]牌，永久获得对应效果。",
     "GUARDIAN-STASIS.title": "凝滞",
-    "GUARDIAN-STASIS.description": "将牌挂起并从其耗能+[blue]1[/blue]开始倒计时。\n在你的回合开始时，所有凝滞卡牌的计时减[blue]1[/blue]。\n计时归零时，将其返回手牌且下次打出前耗能变为[blue]0[/blue]。",
+    "GUARDIAN-STASIS.description": "将牌挂起并从其耗能+[blue]1[/blue]开始倒计时。\n在你的回合开始时，所有凝滞牌的计时减[blue]1[/blue]。\n计时归零时，将其返回手牌且下次打出前耗能变为[blue]0[/blue]。",
     "GUARDIAN-TICK.title": "滴答",
     "GUARDIAN-TICK.description": "被[gold]凝滞[/gold]的牌计时减少时，触发该效果。"
 }

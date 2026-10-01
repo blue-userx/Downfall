@@ -2,7 +2,6 @@ using BaseLib.Abstracts;
 using BaseLib.Utils;
 using Champ.ChampCode.Cards.Ancient;
 using Champ.ChampCode.Core;
-using Champ.ChampCode.Extensions;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
@@ -15,7 +14,7 @@ public class Execute : ChampCardModel, ITranscendenceCard
     public Execute() : base(2, CardType.Attack, CardRarity.Basic, TargetType.AnyEnemy)
     {
         WithDamage(6, 3);
-        this.WithFinisher();
+        WithFinisher();
     }
 
     public CardModel GetTranscendenceTransformedCard()
@@ -25,6 +24,9 @@ public class Execute : ChampCardModel, ITranscendenceCard
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay).WithHitCount(2).Execute(ctx);
+        await CommonActions.CardAttack(this, cardPlay, 2, "vfx/vfx_attack_blunt", null, "heavy_attack.mp3")
+            .WithAttackerAnim(Core.Champ.GetJumpAnimIfApplicable(Owner.Character),
+                Core.Champ.GetJumpAttackDelayIfApplicable(Owner.Character))
+            .Execute(ctx);
     }
 }

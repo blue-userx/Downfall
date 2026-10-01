@@ -3,52 +3,57 @@ using BaseLib.Extensions;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
-using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 
 namespace Automaton.AutomatonCode.Encode;
 
+/// <summary>
+///     A reusable piece of what an Encode card does once it is part of a Function. Most are a
+///     <see cref="ValueEncode" /> (a number that is summed into the Function and played); the rest only edit the
+///     Function while it is assembled (Retain, a fixed cost, a bonus at one position) and have no value.
+/// </summary>
 public abstract class Encodable
 {
-    public abstract TargetType Target { get; }
-    public abstract CardType Type { get; }
+    /// <summary>Loc key part in <c>encode.json</c>: <c>&lt;MOD PREFIX&gt;&lt;Id&gt;.encode</c> / <c>.compile</c>. Explicit so renaming the class cannot break loc.</summary>
+    public abstract string Id { get; }
 
-    private string Id =>  StringHelper.Slugify(GetType().Name);
-    private LocString Description => new("encode", GetType().GetPrefix() +  Id+".encode");
-    public abstract Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay);
-    public abstract DynamicVar DynamicVar(AbstractModel card);
-    public abstract DynamicVar FunctionDynamicVar { get; }
-    public virtual IEnumerable<IHoverTip> HoverTips(AbstractModel card) => [];
-
-    public LocString GetDescription(AbstractModel card)
+    /// <summary>Runs when a card with this effect is played (its normal effect) or the Function is played. Nothing by default.</summary>
+    public virtual Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
-        var description = Description;
-        description.Add("IsOnCard", card is CardModel and not FunctionCard);
-        description.Add("IsOnFunction", card is FunctionCard);
-        description.Add("IsOnPower", card is PowerModel);
-        card.GetDynamicVars().AddTo(description);
-        return description;
+        return Task.CompletedTask;
     }
 
-    public static readonly IEnumerable<Encodable> All =
-    [
-        new PowerEncode(),
-        new BlockEncode(),
-        new DamageEncode(), 
-        new StrengthEncode(),
-        new WeakEncode(), 
-        new VulnerableEncode(), 
-        new PoisonEncode(),
-        new SoulburnEncode(), 
-        new EnergyEncode(), 
-        new DazedEncode()
-    ];
-
-    public void ApplyEncode(FunctionCard functionCard, CardModel sourceCard)
+    public virtual IEnumerable<IHoverTip> HoverTips(AbstractModel card)
     {
-        DynamicVar(functionCard).BaseValue += DynamicVar(sourceCard).BaseValue;
+        return [];
+    }
+
+    /// <summary>The text this effect adds to a card, Function or power. Null when it has none.</summary>
+    public virtual LocString? GetDescription(AbstractModel card)
+    {
+        return null;
+    }
+
+    /// <summary>
+    ///     Called for every source card while the Function is assembled, with the card's slot in the sequence.
+    ///     Value effects sum their value into the Function; the others edit it directly.
+    /// </summary>
+    public virtual void ApplyEncode(FunctionCard function, CardModel sourceCard, FunctionPosition position)
+    {
+    }
+
+    /// <summary>
+    ///     What this effect changes about the Function itself, shown in the Function's Compile list
+    ///     (<c>&lt;Id&gt;.compile</c> in <c>encode.json</c>, formatted with the source card's vars). Null when the
+    ///     effect has no such entry.
+    /// </summary>
+    public LocString? GetFunctionNote(CardModel sourceCard)
+    {
+        var note = new LocString("encode", GetType().GetPrefix() + Id + ".compile");
+        if (!note.Exists()) return null;
+        sourceCard.DynamicVars.AddTo(note);
+        return note;
     }
 }

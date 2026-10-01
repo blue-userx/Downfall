@@ -1,17 +1,22 @@
 ﻿using Downfall.DownfallCode.DynamicVars;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
 
 namespace Downfall.DownfallCode.Extensions;
 
 public static class DynamicVarsExtension
 {
-    public static EnemyDamageVar EnemyDamage(this DynamicVarSet vard)
+    extension(DynamicVarSet vars)
     {
-        return (EnemyDamageVar)vard._vars[nameof(EnemyDamage)];
-    }
+        public EnemyDamageVar EnemyDamage
+            => (EnemyDamageVar)vars["EnemyDamage"];
 
-    public static SelfDamageVar SelfDamage(this DynamicVarSet vard)
-    {
-        return (SelfDamageVar)vard._vars[nameof(SelfDamage)];
+        public SelfDamageVar SelfDamage
+            => (SelfDamageVar)vars["SelfDamage"];
+
+        public EnchantmentVar<T> Enchantment<T>() where T : EnchantmentModel
+        {
+            return (EnchantmentVar<T>)vars[typeof(T).Name];
+        }
     }
 }

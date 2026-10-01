@@ -1,10 +1,13 @@
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
+using Collector.CollectorCode.Extensions;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Collector.CollectorCode.Cards.Uncommon;
@@ -14,12 +17,15 @@ public class IllTakeThat : CollectorCardModel
 {
     public IllTakeThat() : base(1, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        WithVar("IllTakeThat", 10, 3);
-        WithDamage(10, 3);
+        WithVar("IllTakeThat", 10, 4);
+        WithTorchheadDamage(10, 4);
+        //WithDamage(10, 4);
         WithTip(StaticHoverTip.Block);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
+    
+    protected override bool ShouldGlowRedInternal => Owner.IsTorchheadMissing;
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
@@ -27,10 +33,11 @@ public class IllTakeThat : CollectorCardModel
         var stolenBlock = Math.Min(cardPlay.Target.Block, DynamicVars["IllTakeThat"].IntValue);
         if (stolenBlock > 0)
         {
-            await CreatureCmd.LoseBlock(ctx, cardPlay.Target, stolenBlock, cardPlay.Card.Owner.Creature);
-            await CreatureCmd.GainBlock(Owner.Creature, stolenBlock, ValueProp.Move | ValueProp.Unpowered, cardPlay);
+            await CompatibilityCreatureCmd.LoseBlock(ctx, cardPlay.Target, stolenBlock, cardPlay.Card.Owner.Creature);
+            await CreatureCmd.GainBlock(Owner.Creature, stolenBlock, BlockProps.cardUnpowered, cardPlay);
         }
 
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        //await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        await TorchheadCmd.TorchheadAttack(this, cardPlay).ExecuteIfPresent(ctx);
     }
 }

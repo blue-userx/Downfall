@@ -15,7 +15,7 @@ public class BugBarrage : AutomatonCardModel
     public BugBarrage() : base(1, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
         WithDamage(5, 2);
-        this.WithTip<Error>();
+        WithTip<Error>();
         WithCards(2);
     }
 
@@ -24,7 +24,7 @@ public class BugBarrage : AutomatonCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await DownfallCardCmd.GiveCards<Error>(Owner, PileType.Hand, DynamicVars.Cards.IntValue);
-        var statuses = Owner.GetHand(c => c.Type == CardType.Status);
+        var statuses = Owner.Hand.Where(c => c.Type == CardType.Status).ToList();
         var count = statuses.Count;
         await CardCmd.DiscardAndDraw(ctx, statuses, count);
         await CommonActions.CardAttack(this, cardPlay, count).Execute(ctx);

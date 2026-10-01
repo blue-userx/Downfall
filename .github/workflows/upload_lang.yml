@@ -1,0 +1,44 @@
+﻿name: GitHub to Paratranz (language translation)
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "Language code to upload"
+        required: true
+        type: choice
+        options:
+          - zhs
+          - deu
+          - fra
+          - kor
+          - jpn
+          - rus
+          - ita
+          - ptb
+          - spa
+
+jobs:
+  upload:
+    name: Upload Source Files
+    environment: PARATRANZ_ENV
+    runs-on: ubuntu-latest
+    env:
+      PARATRANZ_API_KEY: ${{ secrets.PARATRANZ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3"
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+          pip install git+https://github.com/MuXiu1997/ParaTranz-SDK-python.git
+
+      - name: Upload to Paratranz
+        env:
+          LANG_CODE: ${{ inputs.language }}
+        run: python .github/scripts/para_upload_translations.py

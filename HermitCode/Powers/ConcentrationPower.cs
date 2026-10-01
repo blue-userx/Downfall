@@ -1,7 +1,6 @@
 using Hermit.HermitCode.Core;
 using Hermit.HermitCode.CustomEnums;
 using Hermit.HermitCode.Events;
-using Hermit.HermitCode.Relics;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -34,7 +33,6 @@ public sealed class ConcentrationPower : HermitPowerModel, IShouldTriggerDeadOn,
         IEnumerable<Creature> participants)
     {
         if (participants.Contains(Owner)) return;
-        if (Owner.Player?.GetRelic<Spyglass>() != null) return;
         await PowerCmd.Remove(this);
     }
 }

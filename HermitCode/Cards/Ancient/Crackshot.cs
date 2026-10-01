@@ -1,5 +1,7 @@
 ﻿using BaseLib.Utils;
+using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Compatibility;
+using Hermit.HermitCode.Core;
 using Hermit.HermitCode.Powers;
 using Hermit.HermitCode.Utils;
 using MegaCrit.Sts2.Core.Commands;
@@ -15,14 +17,32 @@ public class Crackshot : HermitCardModel, IHasDeadOnEffect, IModifyDamageMultipl
 {
     public Crackshot() : base(1, CardType.Attack, CardRarity.Ancient, TargetType.AnyEnemy)
     {
-        WithDamage(7, 3);
+        WithDamage(8, 3);
     }
 
-    public override bool GainsBlock => true;
+    protected override Artist Artist => Artist.Get<MalleableFrog>();
     
+    public override bool GainsBlock => true;
+
+
+    public Task DeadOnEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+    {
+        return Task.CompletedTask;
+    }
+
+
+    public decimal ModifyDamageMultiplicativeCompability(Creature? target, decimal amount, ValueProp props,
+        Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
+    {
+        if (cardSource != this || dealer != Owner.Creature || !props.IsPoweredAttack() ||
+            !HermitCmd.HasActiveDeadOnEffect(this))
+            return 1;
+        return Owner.Creature.HasPower<SnipePower>() ? 4 : 2;
+    }
+
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
+        // await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
         var result = await CommonActions.CardAttack(this, cardPlay)
             .WithHermitGunHitFx().BeforeDamage(() =>
             {
@@ -31,22 +51,6 @@ public class Crackshot : HermitCardModel, IHasDeadOnEffect, IModifyDamageMultipl
             })
             .Execute(ctx);
         var unblockedDamage = result.Results.SelectMany(e => e).Sum(e => e.TotalDamage);
-        await CreatureCmd.GainBlock(Owner.Creature, unblockedDamage, ValueProp.Move, cardPlay);
-    }
-    
-
-    public decimal ModifyDamageMultiplicativeCompability(Creature? target, decimal amount, ValueProp props,
-        Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
-    {
-        if (this is not IHasDeadOnEffect deadOnEffect) return 1;
-        if (cardSource != this || dealer != Owner.Creature || !props.IsPoweredAttack() || !deadOnEffect.IsDeadOn)
-            return 1;
-        return Owner.Creature.HasPower<SnipePower>() ? 4 : 2;
-    }
-
-    
-    public Task DeadOnEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
-    {
-        return Task.CompletedTask;
+        await CreatureCmd.GainBlock(Owner.Creature, unblockedDamage, BlockProps.card, cardPlay);
     }
 }

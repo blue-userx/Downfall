@@ -18,12 +18,13 @@ public sealed class BlackPowder : HermitRelicModel, IAfterDeadOnTrigger
 {
     public BlackPowder() : base(RelicRarity.Common)
     {
-        WithVars(new DamageVar(2, ValueProp.Unpowered));
+        WithVars(new DamageVar(2, DamageProps.nonCardUnpowered));
         WithTip(HermitKeywords.DeadOn);
     }
 
     public async Task AfterDeadOnTrigger(PlayerChoiceContext ctx, CardModel card, CardPlay cardPlay)
     {
+        if (card.Owner != Owner) return;
         await CreatureCmd.Damage(ctx, Owner.Creature.CombatState!.HittableEnemies, DynamicVars.Damage, Owner.Creature);
     }
 }

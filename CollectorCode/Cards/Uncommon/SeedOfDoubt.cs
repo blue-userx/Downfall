@@ -1,3 +1,4 @@
+using BaseLib.Extensions;
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
 using Collector.CollectorCode.Powers;
@@ -13,7 +14,8 @@ public class SeedOfDoubt : CollectorCardModel
 {
     public SeedOfDoubt() : base(0, CardType.Skill, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        WithPower<CollectorDoomPower>(3);
+        WithPower<MiasmaPower>(3);
+        WithTip(CardKeyword.Exhaust);
         WithVar("Increase", 1, 1);
     }
 
@@ -21,14 +23,13 @@ public class SeedOfDoubt : CollectorCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.Apply<CollectorDoomPower>(ctx, this, cardPlay);
+        await CommonActions.Apply<MiasmaPower>(ctx, this, cardPlay);
     }
-
-
+    
     public override Task AfterCardExhausted(PlayerChoiceContext choiceContext, CardModel card, bool causedByEthereal)
     {
-        if (card.Owner != Owner) return Task.CompletedTask;
-        DynamicVars.Doom.UpgradeValueBy(DynamicVars["Increase"].BaseValue);
+        if (card.Owner != Owner || Pile is not { Type: PileType.Hand }) return Task.CompletedTask;
+        DynamicVars.Power<MiasmaPower>().BaseValue += DynamicVars["Increase"].BaseValue;
         return Task.CompletedTask;
     }
 }

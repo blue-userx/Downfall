@@ -1,6 +1,5 @@
 ﻿using Awakened.AwakenedCode.Core;
 using Awakened.AwakenedCode.Interfaces;
-using BaseLib.Abstracts;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -10,18 +9,14 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace Awakened.AwakenedCode.Powers;
 
-public class ArchmagusPower : AwakenedPowerModel, IHasSecondAmount
+public class ArchmagusPower : AwakenedPowerModel
 {
     private int SpellsPlayedThisTurn => CombatManager.Instance.History.CardPlaysStarted.Count(e =>
         e.Actor == Owner &&
         e.CardPlay is { IsFirstInSeries: true, Card: ISpell } &&
         e.HappenedThisTurn(CombatState));
 
-    public string GetSecondAmount()
-    {
-        var am = Amount - SpellsPlayedThisTurn;
-        return am <= 0 ? "0" : am.ToString();
-    }
+    public override int DisplayAmount => Math.Max(Amount - SpellsPlayedThisTurn, 0);
 
     public override int ModifyCardPlayCount(CardModel card, Creature? target, int playCount)
     {

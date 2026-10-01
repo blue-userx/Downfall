@@ -20,6 +20,7 @@ public class FlareFlick : HexaghostCardModel
     {
         WithKeyword(HexaghostKeyword.Advance, UpgradeType.Remove);
         WithDamage(10, 4);
+        WithTip(HexaghostTip.Ignite);
         WithTips(c => c.IsUpgraded
             ?
             [
@@ -36,12 +37,12 @@ public class FlareFlick : HexaghostCardModel
         if (cardPlay.Target == null) return;
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
         await HexaghostCmd.Ignite(ctx, Owner);
-        if (!IsUpgraded || !cardPlay.Target.IsAlive) return;
+        if (!IsUpgraded) return;
 
         var choices = new[] { HexaghostKeyword.Retract, HexaghostKeyword.Advance }
             .Select(f => FlareFlickChoice.Create(f, Owner))
             .ToList();
-        var chosen = await CardSelectCmd.FromChooseACardScreen(ctx, choices, Owner, canSkip:true);
+        var chosen = await CardSelectCmd.FromChooseACardScreen(ctx, choices, Owner, true);
         if (chosen is not FlareFlickChoice { Keyword : var keyword }) return;
         if (keyword == HexaghostKeyword.Advance)
             await HexaghostCmd.Advance(ctx, Owner, this);
@@ -75,4 +76,7 @@ public class FlareFlickChoice : HexaghostCardModel
     {
         description.Add("Keyword", Keyword.GetTitle());
     }
+    
+    public override bool CanBeGeneratedByModifiers => false;
+    public override bool CanBeGeneratedInCombat => false;
 }

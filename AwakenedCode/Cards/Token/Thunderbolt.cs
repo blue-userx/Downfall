@@ -29,8 +29,9 @@ public class Thunderbolt : AwakenedCardModel, ISpell, IOnAwaken, ICustomTypePlaq
     public override TargetType TargetType =>
         _owner == null || Owner.GetRelic<EyeOfTheOccult>() == null ? TargetType.AnyEnemy : TargetType.AllEnemies;
 
+    protected override IEnumerable<string> ExtraRunAssetPaths => [(this as ISpell).SpellIconPath];
     public LocString GetTypePlaqueName => new("gameplay_ui", "AWAKENED-SPELL");
-    
+
     public Task OnAwaken(PlayerChoiceContext ctx, Player player)
     {
         if (player != Owner) return Task.CompletedTask;
@@ -40,8 +41,9 @@ public class Thunderbolt : AwakenedCardModel, ISpell, IOnAwaken, ICustomTypePlaq
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await CommonActions.CardAttack(this, cardPlay)
-            .WithHitFx("vfx/vfx_attack_lightning")
+            .WithHitFx("vfx/vfx_attack_lightning", "event:/sfx/characters/awakened-awakened/thunderbolt")
             .Execute(ctx);
     }
 }

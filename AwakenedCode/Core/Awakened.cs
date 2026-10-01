@@ -1,9 +1,15 @@
 ﻿using Awakened.AwakenedCode.Cards.Basic;
 using Awakened.AwakenedCode.Relics;
 using Downfall.DownfallCode.Abstract;
-using Downfall.DownfallCode.Utils.Sound;
+using Downfall.DownfallCode.Compatibility;
+using Downfall.DownfallCode.Config;
 using Godot;
+using MegaCrit.Sts2.Core.Animation;
+using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Characters;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Models;
@@ -13,7 +19,7 @@ namespace Awakened.AwakenedCode.Core;
 public class Awakened : DownfallCharacterModel
 {
     private static readonly Color Color = new(0x12FAF0FF);
-    public override Color EnergyLabelOutlineColor  => new(0x004956FF);
+    public override Color EnergyLabelOutlineColor => new(0x004956FF);
     public override string CharId => "Awakened";
     public override string ModId => AwakenedMainFile.ModId;
     public override Color NameColor => Color;
@@ -24,7 +30,10 @@ public class Awakened : DownfallCharacterModel
     public override float CardColorV => 1f;
     public override Color MapDrawingColor => Color;
 
-    public override CharacterGender Gender => CharacterGender.Neutral;
+    public override bool HideFromVanillaCharacterSelect => DownfallConfig.HideAwakened;
+    public override bool HideInCompendium => DownfallConfig.HideAwakened;
+    
+    public override CharacterGender Gender => CharacterGender.Masculine;
     protected override CharacterModel? UnlocksAfterRunAs => null;
     public override int StartingHp => 70;
     public override int StartingGold => 99;
@@ -58,43 +67,52 @@ public class Awakened : DownfallCharacterModel
     public override RelicPoolModel RelicPool => ModelDb.RelicPool<AwakenedRelicPool>();
 
 
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Awakened/audio/chant_activatev2.ogg", 1, 0.1f, 1, 10)
-    );
+    private Func<Creature, bool> IsAwakened => creature => AwakenedModel.IsAwakened(creature.Player);
 
-    /*
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
+    public override CreatureAnimator? SetupCustomAnimationStates(MegaSprite controller)
     {
-        var idleState = new AnimState("Idle_1", true);
-        var hitState = new AnimState("Hit");
-        var attackState = new AnimState("Attack_1");
-        var awakenedIdle = new AnimState("Idle_2", true);
-        var awakenedAttack = new AnimState("Attack_2");
-        var awakenedHit = new AnimState("Hit");
+        var creature = controller.GetOwningCreature();
+        if (creature == null)
+            return null;
 
-        var animator = new CreatureAnimator(idleState, controller);
-        animator.AddAnyState("Idle", idleState, () => !IsAwakened());
-        animator.AddAnyState("Idle", awakenedIdle, IsAwakened);
-        animator.AddAnyState("Attack", attackState, () => !IsAwakened());
-        animator.AddAnyState("Attack", awakenedAttack, IsAwakened);
-        animator.AddAnyState("Hit", hitState, () => !IsAwakened());
-        animator.AddAnyState("Hit", awakenedHit, IsAwakened);
+        var idle            = new AnimState("idle_loop", true);
+        var idleLow         = new AnimState("low_health_loop", true);
+        var idleAwakened    = new AnimState("idle_loop_awakened", true);
+        var idleAwakenedLow = new AnimState("low_health_loop_awakened", true);
 
+        var idles = new (string name, AnimState state, Func<bool> when)[]
+        {
+            ("IdleAwakenedLow", idleAwakenedLow, () =>  IsAwakened(creature) &&  IsLowHealth(creature)),
+            ("IdleAwakened",    idleAwakened,    () =>  IsAwakened(creature) && !IsLowHealth(creature)),
+            ("IdleLow",         idleLow,         () => !IsAwakened(creature) &&  IsLowHealth(creature)),
+            ("Idle",            idle,            () =>  !IsAwakened(creature) &&  !IsLowHealth(creature))
+        };
+
+        var animator = new CreatureAnimator(PickIdle(), controller);
+
+        foreach (var (name, state, when) in idles)
+            animator.AddAnyState(name, state, when);
+
+        foreach (var (animState, trigger) in AnimationStates)
+        {
+            foreach (var (_, state, when) in idles)
+                animState.AddConditionalNextState(state, when);
+            animator.AddAnyState(trigger, animState);
+        }
+
+        animator.AddAnyState(CreatureAnimator.deathTrigger, new AnimState("die"));
+        animator.AddAnyState("Relaxed", new AnimState("relaxed_loop", true));
         return animator;
 
-        bool IsAwakened()
-        {
-            return AwakenedModel
-                .IsAwakened(CombatManager.Instance.DebugOnlyGetState()?.Players
-                    .FirstOrDefault(p => p.Character == this));
-        }
+        AnimState PickIdle() => idles.First(i => i.when()).state;
     }
-    */
+
 }
 
 public class AwakenedRelicPool : DownfallRelicPool<Awakened>;
 
-public abstract class AwakenedRelicModel(RelicRarity rarity, bool autoAdd = true) : DownfallRelicModel<Awakened>(rarity, autoAdd);
+public abstract class AwakenedRelicModel(RelicRarity rarity, bool autoAdd = true)
+    : DownfallRelicModel<Awakened>(rarity, autoAdd);
 
 public abstract class AwakenedPowerModel(
     PowerType powerType = PowerType.Buff,
@@ -103,3 +121,6 @@ public abstract class AwakenedPowerModel(
 public class AwakenedPotionPool : DownfallPotionPool<Awakened>;
 
 public class AwakenedCardPool : DownfallCardPool<Awakened>;
+
+public abstract class AwakenedPotionModel(PotionRarity potionRarity, PotionUsage potionUsage, TargetType targetType) :
+    DownfallPotionModel<Awakened>(potionRarity, potionUsage, targetType);

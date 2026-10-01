@@ -1,46 +1,62 @@
 ﻿using Automaton.AutomatonCode.Cards.Basic;
+using Automaton.AutomatonCode.Cards.Token;
 using Automaton.AutomatonCode.Core;
 using Automaton.AutomatonCode.CustomEnums;
+using Automaton.AutomatonCode.Events;
 using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
-using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 
 namespace Automaton.AutomatonCode.Relics;
 
 [Pool(typeof(AutomatonRelicPool))]
-public class PlatinumCore : AutomatonRelicModel
+public class PlatinumCore : AutomatonRelicModel, IModifyCompiledFunction, IForceEncodesCard
 {
     public PlatinumCore() : base(RelicRarity.Starter)
     {
         WithTip<StrikeAutomaton>();
         WithTip<DefendAutomaton>();
-        WithTip(AutomatonTip.Encode);
+        WithTip(AutomatonKeyword.Encode);
     }
 
+       
     public override async Task BeforeHandDraw(Player player, PlayerChoiceContext ctx, ICombatState combatState)
     {
+        if (player != Owner || Owner.PlayerCombatState is not { TurnNumber: 1 }) return;
         Flash();
-        if (player != Owner) return;
-        if (player.PlayerCombatState is { TurnNumber: 1 })
-        {
-            var card1 = player.Creature.CombatState!.CreateCard(ModelDb.Card<StrikeAutomaton>(), player);
-            var card2 = player.Creature.CombatState!.CreateCard(ModelDb.Card<DefendAutomaton>(), player);
-            await AutomatonCmd.EncodeCard(card1, ctx);
-            await AutomatonCmd.EncodeCard(card2, ctx);
-        }
+        await Cmd.Wait(0.2f);
+        await AutomatonCmd.EncodeCard<DefendAutomaton>(Owner, ctx);
+        await AutomatonCmd.EncodeCard<StrikeAutomaton>(Owner, ctx);
+    }
+    
+    // The encode itself is performed by EncodeOutcome.CommitAfterPlay (via IForceEncodesCard);
+    // the relic only shows that it was the one responsible.
+    public override Task AfterCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
+    {
+        if (ForceEncodes(cardPlay.Card)) Flash();
+        return Task.CompletedTask;
+    }
 
-        var cards = Owner.Character.CardPool
-            .GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint)
-            .Where(c => AutomatonCmd.IsEncodable(c) && c.Rarity != CardRarity.Token).ToList();
-        var rng = Owner.RunState.Rng.CombatCardSelection;
-        var choice = CardFactory.GetDistinctForCombat(Owner, cards, 1, rng).FirstOrDefault();
-        if (choice == null) return;
-        await CardPileCmd.Add(choice, PileType.Hand);
+    public bool ForceEncodes(CardModel card)
+    {
+        return Owner == card.Owner && card.IsBasicStrikeOrDefend;
+    }
+
+    public bool ModifyCompiledFunction(FunctionCard function, Player player)
+    {
+        if (function.SourceCards.Count(e => e.Rarity == CardRarity.Basic) < 2) return false;
+        function.EnergyCost.SetUntilPlayed(0);
+        return true;
+    }
+
+    public Task AfterModifyCompiledFunction(FunctionCard result, Player player)
+    {
+        Flash();
+        return Task.CompletedTask;
     }
 }

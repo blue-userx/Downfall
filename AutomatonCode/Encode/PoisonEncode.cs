@@ -9,17 +9,24 @@ using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Automaton.AutomatonCode.Encode;
 
-public class PoisonEncode : Encodable
+public class PoisonEncode : ValueEncode
 {
+    public override string Id => "POISON_ENCODE";
+    public override int Order => 6;
+
     public override TargetType Target => TargetType.AnyEnemy;
     public override CardType Type => CardType.Skill;
+    public override DynamicVar FunctionDynamicVar => new PowerVar<PoisonPower>(0);
+
     public override Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
         if (target == null) return Task.CompletedTask;
         return PowerCmd.Apply<PoisonPower>(ctx, target,
-            model.GetDynamicVars().Poison.BaseValue, model.GetCreature(), model as CardModel);
+            model.DynamicVars.Poison.BaseValue, model.Creature, model as CardModel);
     }
-    public override DynamicVar FunctionDynamicVar => new PowerVar<PoisonPower>(0);
-    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model) => [HoverTipFactory.FromPower<PoisonPower>()];
-    public override DynamicVar DynamicVar(AbstractModel model) => model.GetDynamicVars().Poison;
+
+    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model)
+    {
+        return [HoverTipFactory.FromPower<PoisonPower>()];
+    }
 }

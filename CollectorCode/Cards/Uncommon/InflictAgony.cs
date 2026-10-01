@@ -1,9 +1,11 @@
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
 using Collector.CollectorCode.Extensions;
+using Collector.CollectorCode.Powers;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Collector.CollectorCode.Cards.Uncommon;
@@ -13,20 +15,31 @@ public class InflictAgony : CollectorCardModel
 {
     public InflictAgony() : base(2, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        WithDamage(12, 6);
-        WithPower<VulnerablePower>(2);
-        WithPower<WeakPower>(2);
+        WithTorchheadDamage(17, 2);
+        WithVar("Power", 1, 1);
+        WithTip<WeakPower>();
+        WithTip<VulnerablePower>();
+        WithTip<MiasmaPower>();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        if (!cardPlay.Target?.IsAfflicted() ?? false)
+        await TorchheadCmd.TorchheadAttack(this, cardPlay).ExecuteIfPresent(ctx);
+        var amount = DynamicVars["Power"].IntValue;
+        if (!cardPlay.Target!.HasPower<WeakPower>())
         {
-            await CommonActions.Apply<WeakPower>(ctx, this, cardPlay);
-            await CommonActions.Apply<VulnerablePower>(ctx, this, cardPlay);
+            await CommonActions.Apply<WeakPower>(ctx, cardPlay.Target, this, amount);
+        }
+        if (!cardPlay.Target!.HasPower<VulnerablePower>())
+        {
+            await CommonActions.Apply<VulnerablePower>(ctx, cardPlay.Target, this, amount);
+        }
+        if (!cardPlay.Target!.HasPower<MiasmaPower>())
+        {
+            await CommonActions.Apply<MiasmaPower>(ctx, cardPlay.Target, this, amount);
         }
     }
+    protected override bool ShouldGlowRedInternal => Owner.IsTorchheadMissing;
 }

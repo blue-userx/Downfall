@@ -1,13 +1,15 @@
 ﻿using Awakened.AwakenedCode.Cards.Uncommon;
-using Awakened.AwakenedCode.Displays;
 using Awakened.AwakenedCode.Events;
+using Awakened.AwakenedCode.History;
 using Awakened.AwakenedCode.Interfaces;
 using Awakened.AwakenedCode.Piles;
 using Awakened.AwakenedCode.Powers;
 using Awakened.AwakenedCode.Vfx;
+using Downfall.DownfallCode.Core;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -15,15 +17,30 @@ using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Vfx;
-using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.TestSupport;
 
 namespace Awakened.AwakenedCode.Core;
 
 public static class AwakenedCmd
 {
-    public static AwakenedPile GetSpellbookOrThrow(Player player)
+    public static AwakenedPile GetSpellbook(Player player)
     {
         return (AwakenedPile)AwakenedPile.Spellbook.GetPile(player);
+    }
+
+    
+    private static readonly PlayerField<bool> SpellbookInitialized = new(() => false);
+    public static void InitSpellbook(Player player)
+    {
+        if (SpellbookInitialized.Get(player)) return;
+        SpellbookInitialized.Set(player, true);
+        GetSpellbook(player).Refresh(player);
+    }
+
+
+    private static void RefreshSpellbook(Player player)
+    {
+        GetSpellbook(player).Refresh(player);
     }
 
     public static bool WasLastCardPlayedPower(CardModel card)
@@ -55,31 +72,30 @@ public static class AwakenedCmd
     {
         if (!AwakenedModel.MarkAwakened(player)) return;
 
-        Callable.From(() =>
-        {
-            var creatureNode = NCombatRoom.Instance?.GetCreatureNode(player.Creature);
-            if (creatureNode?.Visuals is not NAwakenedCreatureVisuals awakenedVisuals) return;
-            awakenedVisuals.IsAwakened = true;
-            awakenedVisuals.OnAnimationTrigger("Idle");
-        }).CallDeferred();
+        var creatureNode = NCombatRoom.Instance?.GetCreatureNode(player.Creature);
+        if (creatureNode?.Visuals is not NAwakenedCreatureVisuals awakenedVisuals) return;
+        awakenedVisuals.SetParticles(true);
+        await CreatureCmd.TriggerAnim(player.Creature, "Cast", player.Character.CastAnimDelay);
         await AwakenedHook.OnAwaken(player.Creature.CombatState!, ctx, player);
     }
 
-    public static async Task Chant(PlayerChoiceContext ctx, CardModel card, CardPlay cardPlay)
+    public static async Task Chant(PlayerChoiceContext ctx, CardModel card, CardPlay cardPlay, bool isFirstChantInSeries = true)
     {
-        if (card is not IChantable chantable) return;
+        var combatState = card.CombatState;
+        if (card is not IChantable chantable || combatState == null) return;
         var firstTime = !chantable.HasChanted;
-        if (firstTime && card is not Caw)
+        if (firstTime && card is not Caw && TestMode.IsOff)
         {
-            // TODO : change voice lines
             TalkCmd.Play(new LocString("monsters", "DAMP_CULTIST.moves.INCANTATION.banter"), card.Owner.Creature,
                 VfxColor.Blue);
-            SfxCmd.Play("event:/sfx/enemy/enemy_attacks/cultists/cultists_buff_damp");
+            SfxCmd.Play("event:/sfx/characters/awakened-awakened/chant");
         }
 
+        var entry = new ChantEntry(cardPlay, isFirstChantInSeries, combatState.RoundNumber, combatState.CurrentSide, CombatManager.Instance.History, combatState.Players);
+        CombatManager.Instance.History.Add(combatState, entry);
         chantable.HasChanted = true;
         await chantable.PlayChantEffect(ctx, cardPlay);
-        await AwakenedHook.OnCardChanted(card.CombatState!, ctx, card, cardPlay, firstTime);
+        await AwakenedHook.OnCardChanted(card.CombatState!, ctx, card, cardPlay, firstTime, isFirstChantInSeries);
     }
 
     private static bool CanConjure(Player player)
@@ -91,13 +107,12 @@ public static class AwakenedCmd
         Player player)
     {
         if (!CanConjure(player)) return null;
-        var spellbook = AwakenedModel.GetOrInitSpellbook(player);
-        var rng = player.RunState.Rng.CombatCardSelection;
-
-        var spell = spellbook.NextSpell ?? (spellbook.Cards.Count > 0 ? spellbook.Cards[0] : null);
+        InitSpellbook(player);
+        var spellbook = GetSpellbook(player);
+        while (spellbook.NextSpell == null) spellbook.SetNextSpell(player);
+        var spell = spellbook.NextSpell;
         if (spell == null) return null;
-
-        return await ConjureSpell(player, spell, spellbook, rng);
+        return await ConjureSpell(player, spell, spellbook);
     }
 
     public static async Task<CardModel?> ConjureSelected(
@@ -106,25 +121,33 @@ public static class AwakenedCmd
         CardModel selectedSpell)
     {
         if (!CanConjure(player)) return null;
-        var spellbook = AwakenedModel.GetOrInitSpellbook(player);
-        var rng = sourceCard.CombatState!.RunState.Rng.CombatCardSelection;
-
+        InitSpellbook(player);
+        var spellbook = GetSpellbook(player);
         if (!spellbook.Cards.Contains(selectedSpell)) return null;
-        return await ConjureSpell(player, selectedSpell, spellbook, rng);
+        return await ConjureSpell(player, selectedSpell, spellbook);
     }
 
     private static async Task<CardModel?> ConjureSpell(
         Player player,
         CardModel spell,
-        AwakenedPile spellbook,
-        Rng rng)
+        AwakenedPile spellbook)
     {
+  
+        await Cmd.Wait(0.1f);
         spellbook.RemoveInternal(spell);
-        spellbook.SetNextSpell(rng);
-        await CardPileCmd.Add(spell, PileType.Hand);
 
-        if (spellbook.Cards.Count == 0) spellbook.Refresh(player);
-        AwakenedDisplay.Refresh(player);
+        await CardPileCmd.AddGeneratedCardToCombat(
+            spell,
+            PileType.Hand,
+            player);
+
+        if (spellbook.Cards.Count == 0) RefreshSpellbook(player);
+
+        spellbook.SetNextSpell(player);
+
+        if (LocalContext.IsMe(player))
+            Callable.From(() => NSpellbookButton.RevealFor(player)).CallDeferred();
+        //AwakenedDisplay.RefreshSpellDisplays(player);
         return spell;
     }
 }

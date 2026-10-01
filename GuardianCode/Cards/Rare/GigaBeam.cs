@@ -1,8 +1,8 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Compatibility;
-using Downfall.DownfallCode.Powers;
 using Guardian.GuardianCode.Core;
+using Guardian.GuardianCode.Powers;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -23,9 +23,12 @@ public class GigaBeam : GuardianCardModel, IModifyDamageAdditive
     {
         WithDamage(36, 4);
         WithVar("StrengthEffect", 2, 2);
-        this.WithPower<NextTurnStunnedPower>(1, false);
-        this.WithTip<StrengthPower>();
+        WithPower<NextTurnStunnedPower>(1, false);
+        WithTip<StrengthPower>();
     }
+
+
+    protected override Artist Artist => Artist.Get<CartesianCanvas>();
 
     public decimal ModifyDamageAdditiveCompability(Creature? target, decimal amount, ValueProp props, Creature? dealer,
         CardModel? cardSource, CardPlay? cardPlay)
@@ -34,9 +37,6 @@ public class GigaBeam : GuardianCardModel, IModifyDamageAdditive
             ? 0M
             : dealer?.GetPowerAmount<StrengthPower>() * (DynamicVars["StrengthEffect"].IntValue - 1) ?? 0;
     }
-  
-
-    protected override Artist Artist => Artist.Get<CartesianCanvas>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
@@ -67,6 +67,4 @@ public class GigaBeam : GuardianCardModel, IModifyDamageAdditive
                          .OfType<NHyperbeamImpactVfx>())
                 NCombatRoom.Instance?.CombatVfxContainer.AddChildSafely(impact);
     }
-
-  
 }

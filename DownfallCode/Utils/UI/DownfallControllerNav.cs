@@ -4,18 +4,17 @@ using MegaCrit.Sts2.Core.Nodes.Combat;
 namespace Downfall.DownfallCode.Utils.UI;
 
 /// <summary>
-/// Wires arbitrary Controls into Godot's focus graph (FocusMode + FocusNeighbor*) for
-/// controller navigation, without requiring NClickableControl or a hand-rolled
-/// neighbor-linking loop. Mirrors NOrbManager/NCreature's pattern for Defect's orbs,
-/// generalized for any character's custom UI.
+///     Wires arbitrary Controls into Godot's focus graph (FocusMode + FocusNeighbor*) for
+///     controller navigation, without requiring NClickableControl or a hand-rolled
+///     neighbor-linking loop. Mirrors NOrbManager/NCreature's pattern for Defect's orbs,
+///     generalized for any character's custom UI.
 /// </summary>
 public static class DownfallControllerNav
 {
     private const string WiredMetaKey = "downfall_controller_nav_wired";
-    private static readonly StyleBoxEmpty BlankFocusStyle = new();
 
     private const string SelectionReticleScenePath = "res://scenes/ui/selection_reticle.tscn";
-    private static PackedScene? _reticleScene;
+    private static readonly StyleBoxEmpty BlankFocusStyle = new();
 
     // Anchor (creature Hitbox) -> currently-linked group above it. Needed because
     // NCombatRoom.UpdateCreatureNavigation() resets every Hitbox.FocusNeighborTop to a
@@ -25,13 +24,22 @@ public static class DownfallControllerNav
     private static readonly Dictionary<Control, (IReadOnlyList<Control> Controls, int EntryIndex)> AnchorLinks = new();
 
     /// <summary>
-    /// Sets FocusMode and links FocusNeighborLeft/Right across an ordered list, so
-    /// d-pad/stick left-right moves between them. Pass <paramref name="wrap"/> for a ring
-    /// (e.g. a wheel). Pass <paramref name="rtl"/> to reverse screen layout / navigation
-    /// Safe to call repeatedly on the same list.
+    ///     Sets FocusMode and links FocusNeighborLeft/Right across an ordered list, so
+    ///     d-pad/stick left-right moves between them.
+    ///     <para />
+    ///     Pass <paramref name="wrap" /> for a ring (e.g. a wheel).
+    ///     <para />
+    ///     <paramref name="rtl" /> for when <paramref name="controls" />' index order doesn't match true
+    ///     left-to-right screen position — e.g. because the controls are in a container
+    ///     with layout_direction set to RTL. Pass true there so FocusNeighborLeft/Right still point at the correct
+    ///     physical neighbor
+    ///     <para />
+    ///     Safe to call repeatedly on the same list.
     /// </summary>
     public static void WireChain(IReadOnlyList<Control> controls, bool wrap = false, bool rtl = false)
     {
+        if (controls.Any(c => !GodotObject.IsInstanceValid(c) || !c.IsInsideTree())) return;
+
         for (var i = 0; i < controls.Count; i++)
         {
             var control = controls[i];
@@ -48,12 +56,15 @@ public static class DownfallControllerNav
     }
 
     /// <summary>
-    /// Links a group above <paramref name="anchor"/> (typically a creature's Hitbox): "up"
-    /// from the anchor enters the group at <paramref name="entryIndex"/>, "down" from the
-    /// group returns to the anchor. Matches NOrbManager/NCreature's Top/Bottom convention.
+    ///     Links a group above <paramref name="anchor" /> (typically a creature's Hitbox): "up"
+    ///     from the anchor enters the group at <paramref name="entryIndex" />, "down" from the
+    ///     group returns to the anchor. Matches NOrbManager/NCreature's Top/Bottom convention.
+    ///     <paramref name="entryIndex" />  is what controls which control is reached first
     /// </summary>
     public static void LinkAbove(IReadOnlyList<Control> controls, Control anchor, int entryIndex = 0)
     {
+        PruneDeadAnchors();
+
         if (controls.Count == 0)
         {
             AnchorLinks.Remove(anchor);
@@ -77,18 +88,54 @@ public static class DownfallControllerNav
         ApplyAnchorLink(anchor);
     }
 
+    // Drops anchors whose Hitbox has been freed. Without this, a creature that dies (or a
+    // room that ends) without a follow-up LinkAbove/ReapplyAnchorLink for its anchor leaves
+    // a stale key here forever — a static reference pinning the managed wrapper for the rest
+    // of the process. Same static-state-outliving-its-objects trap as the old _reticleScene
+    // cache; over a long multiplayer session these accumulate.
+    private static void PruneDeadAnchors()
+    {
+        List<Control>? dead = null;
+        foreach (var anchor in AnchorLinks.Keys)
+        {
+            if (GodotObject.IsInstanceValid(anchor)) continue;
+            (dead ??= new List<Control>()).Add(anchor);
+        }
+
+        if (dead == null) return;
+        foreach (var anchor in dead) AnchorLinks.Remove(anchor);
+    }
+
     private static void ApplyAnchorLink(Control anchor)
     {
         if (!AnchorLinks.TryGetValue(anchor, out var link)) return;
+
+        // The anchor itself can be freed (creature died) while this is called from a
+        // deferred/patch path — bail rather than throwing on GetPath() below.
+        if (!GodotObject.IsInstanceValid(anchor))
+        {
+            AnchorLinks.Remove(anchor);
+            return;
+        }
+
+        if (link.Controls.Any(control => !GodotObject.IsInstanceValid(control)))
+        {
+            AnchorLinks.Remove(anchor);
+            return;
+        }
+
+        if (!anchor.IsInsideTree()) return;
+        if (link.Controls.Any(control => !control.IsInsideTree())) return;
+
         anchor.FocusNeighborTop = link.Controls[link.EntryIndex].GetPath();
         foreach (var control in link.Controls)
             control.FocusNeighborBottom = anchor.GetPath();
     }
 
     /// <summary>
-    /// Unifies mouse-hover and controller-focus on a single Control into one
-    /// onFocus/onUnfocus pair, without subclassing NClickableControl. Idempotent per
-    /// instance via node metadata, so it's safe to call again on a pooled/reused Control.
+    ///     Unifies mouse-hover and controller-focus on a single Control into one
+    ///     onFocus/onUnfocus pair, without subclassing NClickableControl. Idempotent per
+    ///     instance via node metadata, so it's safe to call again on a pooled/reused Control.
     /// </summary>
     public static void WireHover(Control control, Action onFocus, Action onUnfocus)
     {
@@ -111,21 +158,50 @@ public static class DownfallControllerNav
             else onUnfocus();
         }
 
-        control.Connect(Control.SignalName.MouseEntered, Callable.From(() => { isHovered = true; Refresh(); }));
-        control.Connect(Control.SignalName.MouseExited, Callable.From(() => { isHovered = false; Refresh(); }));
-        control.Connect(Control.SignalName.FocusEntered, Callable.From(() => { isFocused = true; Refresh(); }));
-        control.Connect(Control.SignalName.FocusExited, Callable.From(() => { isFocused = false; Refresh(); }));
+        control.Connect(Control.SignalName.MouseEntered, Callable.From(() =>
+        {
+            isHovered = true;
+            Refresh();
+        }));
+        control.Connect(Control.SignalName.MouseExited, Callable.From(() =>
+        {
+            isHovered = false;
+            Refresh();
+        }));
+        control.Connect(Control.SignalName.FocusEntered, Callable.From(() =>
+        {
+            isFocused = true;
+            Refresh();
+        }));
+        control.Connect(Control.SignalName.FocusExited, Callable.From(() =>
+        {
+            isFocused = false;
+            Refresh();
+        }));
     }
 
     /// <summary>
-    /// Instantiates the base game's own focus reticle (res://scenes/ui/selection_reticle.tscn,
-    /// the bracket Defect's orbs use) sized/positioned around an arbitrary hitbox. Caller
-    /// drives visibility via the returned reticle's OnSelect()/OnDeselect().
+    ///     Instantiates the base game's own focus reticle (res://scenes/ui/selection_reticle.tscn,
+    ///     the bracket Defect's orbs use) sized/positioned around an arbitrary hitbox. Caller
+    ///     drives visibility via the returned reticle's OnSelect()/OnDeselect().
+    ///     <para />
+    ///     Loads per call rather than caching a static PackedScene: the reticle scene isn't in
+    ///     any PreloadManager asset set, so it gets unloaded on room transitions and a cached
+    ///     wrapper would be disposed out from under us (the original ObjectDisposedException).
+    ///     ResourceLoader.Load reuses the game's cached copy when it's still loaded, reloads it
+    ///     when it isn't.
     /// </summary>
-    public static NSelectionReticle AttachFocusReticle(Node parent, Vector2 center, Vector2 hitboxSize, float margin = 12f)
+    public static NSelectionReticle? AttachFocusReticle(Node parent, Vector2 center, Vector2 hitboxSize,
+        float margin = 12f)
     {
-        _reticleScene ??= ResourceLoader.Load<PackedScene>(SelectionReticleScenePath);
-        var reticle = _reticleScene.Instantiate<NSelectionReticle>();
+        var scene = ResourceLoader.Load<PackedScene>(SelectionReticleScenePath);
+        if (scene == null)
+        {
+            GD.PushWarning($"[DownfallControllerNav] Failed to load reticle scene: {SelectionReticleScenePath}");
+            return null;
+        }
+
+        var reticle = scene.Instantiate<NSelectionReticle>();
         var half = hitboxSize / 2f + new Vector2(margin, margin);
         reticle.Position = center - half;
         reticle.Size = half * 2f;

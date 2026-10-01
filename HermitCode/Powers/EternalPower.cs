@@ -1,5 +1,3 @@
-using BaseLib.Abstracts;
-using BaseLib.Extensions;
 using Hermit.HermitCode.Core;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History.Entries;
@@ -10,18 +8,18 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace Hermit.HermitCode.Powers;
 
-public sealed class EternalPower : HermitPowerModel, IHasSecondAmount
+public sealed class EternalPower : HermitPowerModel
 {
     private const int MaxReductions = 4;
 
-    public string GetSecondAmount() =>
-        $"{Math.Max(0, MaxReductions - QualifyingHandDrawsThisTurn())}";
-
-    public override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants,
+    protected override int? SecondAmount => Math.Max(0, MaxReductions - QualifyingHandDrawsThisTurn());
+    
+    public override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side,
+        IReadOnlyList<Creature> participants,
         ICombatState combatState)
     {
         if (!participants.Contains(Owner)) return Task.CompletedTask;
-        this.InvokeSecondAmountChanged();
+        this.InvokeSilentDisplayAmountChanged();
         return Task.CompletedTask;
     }
 
@@ -37,15 +35,17 @@ public sealed class EternalPower : HermitPowerModel, IHasSecondAmount
             return Task.CompletedTask;
 
         card.EnergyCost.AddThisTurnOrUntilPlayed(-Amount, true);
-        this.InvokeSecondAmountChanged();
+        InvokeDisplayAmountChanged();
         return Task.CompletedTask;
     }
 
-    private int QualifyingHandDrawsThisTurn() =>
-        CombatManager.Instance.History.Entries
+    private int QualifyingHandDrawsThisTurn()
+    {
+        return CombatManager.Instance.History.Entries
             .OfType<CardDrawnEntry>()
             .Count(e => e.HappenedThisTurn(CombatState)
                         && e.FromHandDraw
                         && e.Card.Owner.Creature == Owner
                         && !e.Card.Keywords.Contains(CardKeyword.Unplayable));
+    }
 }

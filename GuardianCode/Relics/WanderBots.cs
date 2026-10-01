@@ -9,10 +9,11 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
 namespace Guardian.GuardianCode.Relics;
 
+[Obsolete]
 [Pool(typeof(GuardianRelicPool))]
 public class WanderBots : GuardianRelicModel
 {
-    public WanderBots() : base(RelicRarity.Ancient)
+    public WanderBots() : base(RelicRarity.Ancient, false)
     {
         WithEnergy(1);
     }
@@ -25,7 +26,7 @@ public class WanderBots : GuardianRelicModel
         return Task.CompletedTask;
     }
 
-    protected override async Task AfterSideTurnStart(PlayerChoiceContext ctx, CombatSide side,
+    public override async Task AfterSideTurnStart(CombatSide side,
         IReadOnlyList<Creature> participants,
         ICombatState combatState)
     {

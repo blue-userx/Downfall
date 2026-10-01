@@ -1,4 +1,5 @@
 ﻿using BaseLib.Utils;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -14,11 +15,12 @@ public class Sssharing : SneckoCardModel
         WithCards(1, 1);
         WithKeyword(CardKeyword.Exhaust);
         WithTip(CardKeyword.Retain);
+        WithTip(DownfallTip.Offclass);
     }
-    
+
 
     public override CardMultiplayerConstraint MultiplayerConstraint => CardMultiplayerConstraint.MultiplayerOnly;
-    
+
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
@@ -27,10 +29,7 @@ public class Sssharing : SneckoCardModel
         {
             var pool = SneckoModel.GetCombatSneckoCards(Owner, amount, player)
                 .ToList();
-            foreach (var card in pool)
-            {
-                card.SetToFreeThisTurn();
-            }
+            foreach (var card in pool) card.SetToFreeThisTurn();
             await CardPileCmd.Add(pool, PileType.Hand);
         }
     }

@@ -2,8 +2,6 @@ using BaseLib.Utils;
 using Champ.ChampCode.Core;
 using Champ.ChampCode.CustomEnums;
 using Champ.ChampCode.Events;
-using Champ.ChampCode.Stance;
-using Downfall.DownfallCode.Abstract;
 using MegaCrit.Sts2.Core.Entities.Relics;
 
 namespace Champ.ChampCode.Relics;
@@ -13,12 +11,13 @@ public class DefensiveThesis : ChampRelicModel, IModifyDefensiveFinisherBonus
 {
     public DefensiveThesis() : base(RelicRarity.Uncommon)
     {
-        WithTips(_ => [ChampModelDb.ChampStance<ChampDefensiveStance>().HoverTip]);
+        //WithTips(_ => ChampModelDb.ChampStance<ChampDefensiveStance>().HoverTips);
         WithTip(ChampTip.Finisher);
+        WithBlock(3);
     }
-    
+
     public int ModifyDefensiveFinisherBonus(ChampStanceModel stanceModel, int baseAmount)
     {
-        return stanceModel.Owner == Owner ? baseAmount + 3 : baseAmount;
+        return stanceModel.Owner == Owner ? baseAmount + DynamicVars.Block.IntValue : baseAmount;
     }
 }

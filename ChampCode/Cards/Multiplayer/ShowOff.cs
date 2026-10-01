@@ -16,7 +16,7 @@ public class ShowOff : ChampCardModel
     {
         WithCards(3, 1);
         WithTip(ChampKeyword.TriggerSkillBonus);
-        WithTip(ChampTip.Stance);
+        // WithTip(ChampTip.Stance);
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();
@@ -26,7 +26,7 @@ public class ShowOff : ChampCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await Owner.ChampStance().SkillBonus(ctx);
+        await Owner.ChampStance.SkillBonus(ctx);
         if (cardPlay.Target?.Player == null) return;
         await CardPileCmd.Draw(ctx, DynamicVars.Cards.IntValue, cardPlay.Target.Player);
     }

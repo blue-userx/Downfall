@@ -1,4 +1,5 @@
 using BaseLib.Utils;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Relics;
@@ -9,19 +10,22 @@ using Snecko.SneckoCode.Core;
 namespace Snecko.SneckoCode.Relics;
 
 [Pool(typeof(SneckoRelicPool))]
-public class SealOfApproval() : SneckoRelicModel(RelicRarity.Common)
+public class SealOfApproval : SneckoRelicModel
 {
+    public SealOfApproval() : base(RelicRarity.Common)
+    {
+        WithTip(DownfallTip.Offclass);
+    }
+
+
     public override bool HasUponPickupEffect => true;
 
     public override async Task AfterObtained()
     {
-        var cards = SneckoModel.GetRewardSneckoCards(Owner)
-            .Where(c => c is { Rarity: CardRarity.Uncommon, Type: CardType.Power }).TakeRandom(5,
-                Owner.RunState.Rng.CombatCardSelection).ToList();
-        var a = await CardSelectCmd.FromChooseACardScreen(new BlockingPlayerChoiceContext(), cards, Owner);
-        if (a == null) return;
-        var card = a.ToMutable();
-        Owner.RunState.AddCard(card, Owner);
+        var cards = SneckoModel.CreateRewardSneckoCards(Owner, 5,
+            c => c is { Rarity: CardRarity.Uncommon, Type: CardType.Power }).ToList();
+        var card = await CardSelectCmd.FromChooseACardScreen(new BlockingPlayerChoiceContext(), cards, Owner);
+        if (card == null) return;
         var result = await CardPileCmd.Add(card, PileType.Deck);
         CardCmd.PreviewCardPileAdd(result, 0.1f);
     }

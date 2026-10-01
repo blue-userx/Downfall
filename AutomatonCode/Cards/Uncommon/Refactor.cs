@@ -1,9 +1,8 @@
 ﻿using Automaton.AutomatonCode.Core;
 using BaseLib.Commands;
-using BaseLib.Extensions;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
-using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -16,7 +15,7 @@ public class Refactor : AutomatonCardModel
     public Refactor() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
         WithBlock(4, 2);
-        this.WithScry(4);
+        WithScry(4);
         WithTip(CardKeyword.Exhaust);
     }
 
@@ -28,7 +27,7 @@ public class Refactor : AutomatonCardModel
 
         var statuses = result.Discarded.Where(c => c.Type == CardType.Status).ToList();
         foreach (var status in statuses)
-            await CardCmd.Exhaust(ctx, status);
+            await CardCmdCompatibility.Exhaust(ctx, status);
 
         if (statuses.Count > 0)
             await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block.IntValue * statuses.Count,

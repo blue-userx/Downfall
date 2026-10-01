@@ -9,17 +9,17 @@ using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Automaton.AutomatonCode.Powers;
 
-public class OverheatPower : AutomatonPowerModel
+public class OverheatPower() : AutomatonPowerModel(PowerType.Debuff)
 {
     public override PowerInstanceType InstanceType => PowerInstanceType.InstancedPerApplier;
 
-    protected override async Task AfterCardGeneratedForCombat(PlayerChoiceContext ctx, CardModel card, Player? creator)
+    public override async Task AfterCardGeneratedForCombat(CardModel card, Player? creator)
     {
         if (creator == null || creator.Creature != Applier)
             return;
         Flash();
-        await DownfallCreatureCmd.Damage(ctx, Owner, Amount,
-            ValueProp.Unblockable | ValueProp.Unpowered, card.Owner.Creature, card, null);
+        await CompatibilityCreatureCmd.Damage(new BlockingPlayerChoiceContext(), Owner, Amount,
+            DamageProps.nonCardHpLoss, card.Owner.Creature, card, null);
         await PowerCmd.Remove(this);
     }
 }

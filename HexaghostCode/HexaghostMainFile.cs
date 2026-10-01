@@ -1,43 +1,48 @@
-using System.Reflection;
-using BaseLib.Utils;
-using Downfall.DownfallCode;
+﻿using BaseLib.Utils;
 using Downfall.DownfallCode.Localization;
 using Downfall.DownfallCode.Patches;
 using Downfall.DownfallCode.Utils;
-using Godot;
+using Downfall.DownfallCode.Voting;
 using Hexaghost.HexaghostCode.Core;
 using Hexaghost.HexaghostCode.CustomEnums;
 using Hexaghost.HexaghostCode.Events;
 using Hexaghost.HexaghostCode.Localization;
+using Hexaghost.HexaghostCode.Patches;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
-using MegaCrit.Sts2.Core.Models;
+using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
 namespace Hexaghost.HexaghostCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class HexaghostMainFile : Node
+public static class HexaghostMainFile
 {
     public const string ModId = "Hexaghost"; //At the moment, this is used only for the Logger and harmony names.
 
-    //public static Logger Logger { get; } =new(ModId, LogType.Generic);
+    public static Logger Logger { get; } =
+        new(ModId, LogType.Generic);
 
     public static void Initialize()
     {
+        PostInitRegistry.Register(PostModelInit);
         RichTextEffectRegistry.Register<RichTextAfterlife>();
         CustomLocTableManager.Register("ghostflames");
         HexaghostSubscriber.Subscribe();
-        
+
         BundledSubmodLocRegistry.Register(ModId);
-   
-        PostInitRegistry.Register(() =>
-        {
-            CardKeywordSubRegistry.Register(CardKeyword.Ethereal, HexaghostKeyword.Afterlife);
-            KeywordColorRegistry.Register(HexaghostKeyword.Afterlife, "afterlife");
-        });
-        
-        CombatUiHooks.Register(HexaghostModel.SetupHexaghostCombatUi);
-       
+        VotingPoolRegistry.Register<HexaghostCardPool>(VotingPool.Hexaghost, ModId);
+
+        ModPatcher.Create(ModId, Logger)
+            .Add(typeof(NCreatureAnimationPatch))
+            .Add(typeof(PatchCreatureHoverTips))
+            .PatchAll();
+    }
+
+    private static void PostModelInit()
+    {
+        CardKeywordSubRegistry.Register(CardKeyword.Ethereal, HexaghostKeyword.Afterlife);
+        KeywordColorRegistry.Register(HexaghostKeyword.Afterlife, "afterlife");
     }
 }
-

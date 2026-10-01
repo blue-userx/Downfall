@@ -21,7 +21,7 @@ public sealed class ImpendingDoom : HermitCardModel, IHasDeadOnEffect
 {
     public ImpendingDoom() : base(-2, CardType.Curse, CardRarity.Curse, DownfallTargetType.MeAndEnemies)
     {
-        WithVar(new DamageVar(13, ValueProp.Move | ValueProp.Unpowered));
+        WithVar(new DamageVar(13, DamageProps.cardUnpowered));
         WithKeyword(CardKeyword.Unplayable);
     }
 
@@ -31,9 +31,11 @@ public sealed class ImpendingDoom : HermitCardModel, IHasDeadOnEffect
 
 
     protected override bool ShouldGlowGoldInternal => false;
-    protected override bool ShouldGlowRedInternal => this is IHasDeadOnEffect { IsDeadOn: true };
-    public override bool HasTurnEndInHandEffect => this is IHasDeadOnEffect { IsDeadOn: true };
+    protected override bool ShouldGlowRedInternal => HermitCmd.HasActiveDeadOnEffect(this);
+    public override bool HasTurnEndInHandEffect => HermitCmd.HasActiveDeadOnEffect(this);
     public override bool CanBeGeneratedByModifiers => false;
+
+    private static bool IsMultiplayer => (RunManager.Instance.State?.Players.Count ?? 1) > 1;
 
     public async Task DeadOnEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
@@ -59,11 +61,9 @@ public sealed class ImpendingDoom : HermitCardModel, IHasDeadOnEffect
         }, playCount: 1);
         await HermitCmd.TriggerDeadOnEffect(ctx, this, cardPlay);
     }
-    
-    private static bool IsMultiplayer => (RunManager.Instance.DebugOnlyGetState()?.Players.Count ?? 1) > 1;
 
     protected override void AddExtraArgsToDescription(LocString description)
-    { 
+    {
         description.Add("Multiplayer", IsMultiplayer);
     }
 }

@@ -1,9 +1,7 @@
 using BaseLib.Commands;
 using BaseLib.Utils;
 using Champ.ChampCode.Core;
-using Champ.ChampCode.Extensions;
 using Downfall.DownfallCode.Artists;
-using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -15,8 +13,8 @@ public class BattlePlan : ChampCardModel
     public BattlePlan() : base(0, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
         WithBlock(2, 2);
-        this.WithEnterDefensive();
-        this.WithScry(3, 1);
+        WithEnterDefensive();
+        WithScry(2, 1);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();

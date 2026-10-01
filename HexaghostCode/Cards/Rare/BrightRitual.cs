@@ -1,6 +1,8 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Hexaghost.HexaghostCode.Core;
+using Hexaghost.HexaghostCode.CustomEnums;
+using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -8,11 +10,12 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 namespace Hexaghost.HexaghostCode.Cards.Rare;
 
 [Pool(typeof(HexaghostCardPool))]
-public class BrightRitual : HexaghostCardModel
+public class BrightRitual : HexaghostCardModel, IDoesNotTriggerGhostflame
 {
     public BrightRitual() : base(1, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
         WithKeyword(CardKeyword.Exhaust);
+        WithTip(HexaghostTip.Extinguish);
         WithCostUpgradeBy(-1);
         WithEnergy(1);
         WithCards(1);

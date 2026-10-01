@@ -12,10 +12,10 @@ public class Unyielding : HermitCardModel
     public Unyielding() : base(1, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
         WithBlock(5, 3);
-        this.WithTip<VulnerablePower>();
-        this.WithPower<UnyieldingPower>(1, false);
+        WithTip<VulnerablePower>();
+        WithPower<UnyieldingPower>(1, false);
     }
-    
+
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {

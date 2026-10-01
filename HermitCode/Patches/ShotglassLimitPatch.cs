@@ -4,7 +4,8 @@ using MegaCrit.Sts2.Core.Nodes.Potions;
 
 namespace Hermit.HermitCode.Patches;
 
-[HarmonyPatch(typeof(NPotionPopup), nameof(NPotionPopup.RefreshButtons))]
+[HarmonyPatch(typeof(NPotionPopup), "RefreshButtons")]
+[Obsolete]
 internal static class ShotglassLimitPatch
 {
     private static void Postfix(NPotionPopup __instance)

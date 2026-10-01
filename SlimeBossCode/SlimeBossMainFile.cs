@@ -1,18 +1,16 @@
-using System.Reflection;
-using Downfall.DownfallCode;
-using Downfall.DownfallCode.Localization;
+﻿using Downfall.DownfallCode.Localization;
 using Downfall.DownfallCode.Utils;
-using Godot;
-using HarmonyLib;
+using Downfall.DownfallCode.Voting;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using SlimeBoss.SlimeBossCode.Patches;
+using SlimeBoss.SlimeBossCode.Slimes;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
 namespace SlimeBoss.SlimeBossCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class SlimeBossMainFile : Node
+public static class SlimeBossMainFile
 {
     public const string ModId = "SlimeBoss"; //At the moment, this is used only for the Logger and harmony names.
 
@@ -22,10 +20,17 @@ public partial class SlimeBossMainFile : Node
     public static void Initialize()
     {
         BundledSubmodLocRegistry.Register(ModId);
+        VotingPoolRegistry.Register<Core.SlimeBossCardPool>(VotingPool.Slimeboss, ModId);
+        HivePowerExemptRegistry.Register<SlimeModel>();
         ModPatcher.Create(ModId, Logger)
-            .Add(typeof(PersonalHivePowerSlimePatch))
             .Add(typeof(SlimeDeathPatches))
             .Add(typeof(SlimeHoverTipPatch))
+            .Add(typeof(SlimePetPositionPatch))
             .PatchAll();
+
+        FormBoneRegistry.RegisterVoidForm<Core.SlimeBoss>("hat");
+        FormBoneRegistry.RegisterSerpentForm<Core.SlimeBoss>("hat");
+        FormBoneRegistry.RegisterReaperForm<Core.SlimeBoss>("hat");
+        FormBoneRegistry.RegisterEchoForm<Core.SlimeBoss>("hat");
     }
 }

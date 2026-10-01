@@ -3,7 +3,6 @@ using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
 using Hexaghost.HexaghostCode.Cards.Token;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -13,17 +12,18 @@ namespace Hexaghost.HexaghostCode.Cards.Uncommon;
 [Pool(typeof(HexaghostCardPool))]
 public class NightmareStrike : HexaghostCardModel, IHasAfterlifeEffect
 {
-    public NightmareStrike() : base(1, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
+    public NightmareStrike() : base(1, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
     {
         WithUpgradingCardTip<ShadowStrike>();
-        WithDamage(5, 2);
+        WithDamage(4, 2);
         WithTags(CardTag.Strike);
-        this.WithAfterlife();
+        WithAfterlife();
     }
 
     protected override Artist Artist => Artist.Get<Thelethargicweirdo>();
 
-    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay? cardPlay, bool wasExhausted,
+        bool causedByEthereal)
     {
         await DownfallCardCmd.GiveCard<ShadowStrike>(Owner, PileType.Hand, upgraded: IsUpgraded);
     }
@@ -31,6 +31,6 @@ public class NightmareStrike : HexaghostCardModel, IHasAfterlifeEffect
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        await AfterlifeEffect(ctx, cardPlay);
+        await AfterlifeEffect(ctx, cardPlay, false, false);
     }
 }

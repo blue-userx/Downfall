@@ -1,7 +1,6 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -16,15 +15,16 @@ public class GhostLash : HexaghostCardModel, IHasAfterlifeEffect
 {
     public GhostLash() : base(1, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
     {
-        this.WithAfterlife();
-        WithCalculatedDamage(8, 3, Calc, ValueProp.Move, 2, 2);
+        WithAfterlife();
+        WithCalculatedDamage(8, 3, Calc, DamageProps.card, 2, 2);
     }
 
     protected override Artist Artist => Artist.Get<Thelethargicweirdo>();
 
-    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay? cardPlay, bool wasExhausted,
+        bool causedByEthereal)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        await HexaghostCmd.AfterlifeAttack(this, cardPlay).Execute(ctx);
     }
 
     private static decimal Calc(CardModel card, Creature? arg2)
@@ -35,6 +35,6 @@ public class GhostLash : HexaghostCardModel, IHasAfterlifeEffect
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await AfterlifeEffect(ctx, cardPlay);
+        await AfterlifeEffect(ctx, cardPlay, false, false);
     }
 }

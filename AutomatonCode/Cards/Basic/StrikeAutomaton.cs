@@ -1,6 +1,5 @@
 ﻿using Automaton.AutomatonCode.Core;
 using Automaton.AutomatonCode.Encode;
-using Automaton.AutomatonCode.Interfaces;
 using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -8,13 +7,16 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 namespace Automaton.AutomatonCode.Cards.Basic;
 
 [Pool(typeof(AutomatonCardPool))]
-public class StrikeAutomaton : AutomatonCardModel, IEncodable
+public class StrikeAutomaton : AutomatonCardModel
 {
     public StrikeAutomaton() : base(1, CardType.Attack, CardRarity.Basic, TargetType.AnyEnemy)
     {
+        WithEncode<DamageEncode>(false);
         WithTags(CardTag.Strike);
         WithDamage(6, 3);
     }
+
+
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
@@ -22,8 +24,4 @@ public class StrikeAutomaton : AutomatonCardModel, IEncodable
             .WithHitFx("vfx/vfx_attack_slash")
             .Execute(ctx);
     }
-
-    public bool CanPlayerEncode => false;
-
-    public IEnumerable<Encodable> Encodings => [new DamageEncode()];
 }

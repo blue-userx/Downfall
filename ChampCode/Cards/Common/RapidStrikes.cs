@@ -1,3 +1,4 @@
+﻿using Downfall.DownfallCode.Extensions;
 using BaseLib.Utils;
 using Champ.ChampCode.Core;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -18,10 +19,8 @@ public class RapidStrikes : ChampCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay, 2).Execute(ctx);
-        Owner.RunState.Rng.CombatCardSelection.NextItem(PileType.Hand
-            .GetPile(Owner)
-            .Cards
-            .Where(c => c.Tags.Contains(CardTag.Strike) && c.EnergyCost.GetResolved() > 0 && !c.EnergyCost.CostsX)
+        Owner.RunState.Rng.CombatCardSelection.NextItem(Owner.Hand
+                .Where(c => c.Tags.Contains(CardTag.Strike) && !c.EnergyCost.CostsX && c.EnergyCost.GetAmountToSpend() > 0)
             )?
             .EnergyCost
             .SetThisTurn(0);

@@ -1,14 +1,12 @@
-using System.Reflection;
-using BaseLib.Utils;
+﻿using BaseLib.Utils;
 using Champ.ChampCode.Cards;
 using Champ.ChampCode.Core;
 using Champ.ChampCode.Events;
 using Champ.ChampCode.Localization;
-using Downfall.DownfallCode;
 using Downfall.DownfallCode.Localization;
 using Downfall.DownfallCode.Patches;
 using Downfall.DownfallCode.Utils;
-using Godot;
+using Downfall.DownfallCode.Voting;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
@@ -16,7 +14,7 @@ using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 namespace Champ.ChampCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class ChampMainFile : Node
+public static class ChampMainFile
 {
     public const string ModId = "Champ"; //At the moment, this is used only for the Logger and harmony names.
 
@@ -25,15 +23,19 @@ public partial class ChampMainFile : Node
 
     public static void Initialize()
     {
-        CardExecutionRegistry.RegisterAfter(ChampCardEffectHandler.DoAfterOnPlayInternal);
         CustomLocTableManager.Register("champ_stances");
         CardDescriptionRegistry.Register<ChampCardModel>(DescriptionInjectionPoint.BelowMainText,
             new SkillBonusDescriptionSource());
         CardDescriptionRegistry.Register<ChampCardModel>(DescriptionInjectionPoint.BelowMainText,
             new FinisherDescriptionSource());
         ChampSubscriber.Subscribe();
-        
+
         BundledSubmodLocRegistry.Register(ModId);
-        LocFormatterRegistry.Register(new FinisherFormatter());
+        VotingPoolRegistry.Register<ChampCardPool>(VotingPool.Champ, ModId);
+
+        FormBoneRegistry.RegisterVoidForm<Core.Champ>("Head");
+        FormBoneRegistry.RegisterSerpentForm<Core.Champ>("Neck");
+        FormBoneRegistry.RegisterReaperForm<Core.Champ>("Neck");
+        FormBoneRegistry.RegisterEchoForm<Core.Champ>("Neck");
     }
 }

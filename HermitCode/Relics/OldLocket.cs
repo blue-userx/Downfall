@@ -6,7 +6,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 
 namespace Hermit.HermitCode.Relics;
@@ -18,15 +17,16 @@ public sealed class OldLocket : HermitRelicModel
 {
     public OldLocket() : base(RelicRarity.Starter)
     {
-        WithTips(e => HoverTipFactory.FromCardWithCardHoverTips<MementoCard>());
+        WithCardTip<MementoCard>();
     }
 
     public override RelicModel GetUpgradeReplacement()
     {
-        return ModelDb.Relic<ClaspedLocket>();
+        return ModelDb.Relic<ScorchedLocket>();
     }
 
-    public override async Task BeforeHandDraw(Player player, PlayerChoiceContext choiceContext, ICombatState combatState)
+    public override async Task BeforeHandDraw(Player player, PlayerChoiceContext choiceContext,
+        ICombatState combatState)
     {
         if (Owner.PlayerCombatState is not { TurnNumber: 1 } || player != Owner) return;
         await DownfallCardCmd.GiveCard<MementoCard>(Owner, PileType.Hand);

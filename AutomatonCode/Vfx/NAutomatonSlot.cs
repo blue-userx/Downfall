@@ -4,7 +4,6 @@ using MegaCrit.Sts2.Core.Nodes.Cards;
 
 namespace Automaton.AutomatonCode.Vfx;
 
-[GlobalClass]
 public partial class NAutomatonSlot : Control
 {
     private float _baseY;
@@ -59,10 +58,8 @@ public partial class NAutomatonSlot : Control
         {
             var cardNode = _holder.CardNode;
             if (cardNode != null && IsInstanceValid(cardNode)
-                && cardNode.GetParent() != null && _holder.IsAncestorOf(cardNode))
-            {
+                                 && cardNode.GetParent() != null && _holder.IsAncestorOf(cardNode))
                 cardNode.GetParent().RemoveChild(cardNode);
-            }
 
             _holder.QueueFree();
         }

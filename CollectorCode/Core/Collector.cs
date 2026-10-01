@@ -1,23 +1,25 @@
 ﻿using BaseLib.Abstracts;
 using Collector.CollectorCode.Cards.Basic;
+using Collector.CollectorCode.CustomEnums;
+using Collector.CollectorCode.DynamicVars;
 using Collector.CollectorCode.Relics;
 using Downfall.DownfallCode.Abstract;
 using Downfall.DownfallCode.Config;
-using Downfall.DownfallCode.Utils.Sound;
 using Godot;
-using MegaCrit.Sts2.Core.Animation;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Characters;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Collector.CollectorCode.Core;
 
 public class Collector : DownfallCharacterModel
 {
     private static readonly Color Color = new(0x0D9D82FF);
-    public override Color EnergyLabelOutlineColor  => new(0x004f04FF);
+    public override Color EnergyLabelOutlineColor => new(0x004f04FF);
     public override string CharId => "Collector";
     public override string ModId => CollectorMainFile.ModId;
     public override Color NameColor => Color;
@@ -30,8 +32,10 @@ public class Collector : DownfallCharacterModel
 
     public override CharacterGender Gender => CharacterGender.Feminine;
     protected override CharacterModel? UnlocksAfterRunAs => null;
-    public override int StartingHp => 65;
+    public override int StartingHp => 70;
     public override int StartingGold => 99;
+    public override bool HideFromVanillaCharacterSelect => DownfallConfig.HideCollector;
+    public override bool HideInCompendium => DownfallConfig.HideCollector;
 
     public override IEnumerable<CardModel> StartingDeck =>
     [
@@ -44,7 +48,7 @@ public class Collector : DownfallCharacterModel
         ModelDb.Card<DefendCollector>(),
         ModelDb.Card<DefendCollector>(),
         ModelDb.Card<FuelTheFire>(),
-        ModelDb.Card<YouAreMine>()
+        ModelDb.Card<Fireball>()
     ];
 
 
@@ -53,10 +57,6 @@ public class Collector : DownfallCharacterModel
         ModelDb.Relic<EmeraldTorch>()
     ];
 
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Collector/audio/character_select/STS_SFX_CollectorSummon_v2.ogg", 1, 0.1f, 1, 7)
-    );
-
     public override float AttackAnimDelay => 0.15f;
 
     public override float CastAnimDelay => 0.25f;
@@ -64,44 +64,81 @@ public class Collector : DownfallCharacterModel
     public override CardPoolModel CardPool => ModelDb.CardPool<CollectorCardPool>();
     public override PotionPoolModel PotionPool => ModelDb.PotionPool<CollectorPotionPool>();
     public override RelicPoolModel RelicPool => ModelDb.RelicPool<CollectorRelicPool>();
-
-
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
-    {
-        return SetupAnimationState(
-            controller,
-            "idle",
-            hitName: "Hit"
-        );
-    }
 }
 
 public class CollectorRelicPool : DownfallRelicPool<Collector>;
 
-public abstract class CollectorRelicModel(RelicRarity rarity, bool autoAdd = true) : DownfallRelicModel<Collector>(rarity, autoAdd);
+public abstract class CollectorRelicModel(RelicRarity rarity, bool autoAdd = true)
+    : DownfallRelicModel<Collector>(rarity, autoAdd)
+{
+    protected ConstructedRelicModel WithKindle(int baseVal)
+    {
+        WithVars(new KindleVar(baseVal));
+        return this;
+    }
+}
 
 public abstract class CollectorPowerModel(
     PowerType powerType = PowerType.Buff,
-    PowerStackType powerStackType = PowerStackType.Counter) : DownfallPowerModel<Collector>(powerType, powerStackType);
+    PowerStackType powerStackType = PowerStackType.Counter) : DownfallPowerModel<Collector>(powerType, powerStackType)
+{
+    protected ConstructedPowerModel WithReserveTip()
+    {
+        return WithTip(new PowerTooltipSource(_ => CollectorTip.ReserveTip));
+    }
+    
+    protected ConstructedPowerModel WithReserve(int baseVal)
+    {
+        WithReserveTip();
+        return WithVars(new ReserveVar(baseVal));
+    }
+    
+    protected ConstructedPowerModel WithTorchheadDamage(int baseVal)
+    {
+        return WithVars(new TorchheadDamageVar(baseVal, DamageProps.monsterMove));
+    }
+
+
+}
 
 public class CollectorPotionPool : DownfallPotionPool<Collector>;
+
+public abstract class CollectorPotionModel(PotionRarity potionRarity, PotionUsage potionUsage, TargetType targetType) :
+    DownfallPotionModel<Collector>(potionRarity, potionUsage, targetType)
+{
+    protected ConstructedPotionModel WithReserve(int baseVal)
+    {
+        WithReserveTip();
+        return WithVars(new ReserveVar(baseVal));
+    }
+    
+    protected ConstructedPotionModel WithReserveTip()
+    {
+        return WithTip(new PotionTooltipSource(_ => CollectorTip.ReserveTip));
+    }
+    
+    protected ConstructedPotionModel WithKindle(int baseVal)
+    {
+        return WithVars(new KindleVar(baseVal));
+    }
+
+}
 
 public class CollectorCardPool : DownfallCardPool<Collector>;
 
 public class CollectibleCardPool : CustomCardPoolModel
 {
-    private static readonly Color Color = new("C6C1FF");
     public override string Title => "Collectible";
 
     public override string BigEnergyIconPath => ModelDb.CardPool<CollectorCardPool>().BigEnergyIconPath;
     public override string TextEnergyIconPath => ModelDb.CardPool<CollectorCardPool>().TextEnergyIconPath;
 
-    public override float H => Color.H;
-    public override float S => Color.S;
-    public override float V => Color.V;
+    public override float H => 1;
+    public override float S => 0;
+    public override float V => 1.2f;
 
 
-    public override Color DeckEntryCardColor => Color;
-    public override bool IsColorless => false;
+    public override Color DeckEntryCardColor => new Color("A3A3A3FF");
+    public override bool IsColorless => true;
     public override bool IsShared => true;
 }

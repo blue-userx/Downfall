@@ -14,7 +14,7 @@ public sealed class FromBeyond : HermitCardModel
 {
     public FromBeyond() : base(1, CardType.Skill, CardRarity.Rare, TargetType.RandomEnemy)
     {
-        this.WithHpLoss(5, 2);
+        WithHpLoss(5, 2);
         WithCalculatedVar("CalculatedHits", 0, CountCardsInExhaust);
         WithTip(CardKeyword.Exhaust);
     }
@@ -23,7 +23,7 @@ public sealed class FromBeyond : HermitCardModel
 
     private static decimal CountCardsInExhaust(CardModel card, Creature? _)
     {
-        return card.Owner.GetExhaust().Count;
+        return card.Owner.ExhaustPile.Count;
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay play)

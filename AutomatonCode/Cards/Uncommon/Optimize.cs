@@ -3,6 +3,7 @@ using Automaton.AutomatonCode.CustomEnums;
 using Automaton.AutomatonCode.Powers;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -14,7 +15,7 @@ public class Optimize : AutomatonCardModel
     public Optimize() : base(1, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
         WithKeyword(CardKeyword.Innate, UpgradeType.Add);
-        this.WithPower<OptimizePower>(1, false);
+        WithPower<OptimizePower>(1, false);
         WithTip(AutomatonTip.Stash);
     }
 
@@ -22,6 +23,7 @@ public class Optimize : AutomatonCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await CommonActions.ApplySelf<OptimizePower>(ctx, this);
     }
 }

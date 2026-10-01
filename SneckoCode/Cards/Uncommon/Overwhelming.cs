@@ -1,4 +1,5 @@
 using BaseLib.Utils;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using Snecko.SneckoCode.Core;
@@ -12,7 +13,8 @@ public class Overwhelming : SneckoCardModel
     public Overwhelming() : base(1, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
         WithKeyword(CardKeyword.Ethereal, UpgradeType.Remove);
-        this.WithPower<OverwhelmingPower>(1, false);
+        WithPower<OverwhelmingPower>(1, false);
+        WithTip(DownfallTip.Offclass);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)

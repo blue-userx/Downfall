@@ -1,5 +1,6 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -14,6 +15,7 @@ public class SerpentIdol : SneckoCardModel
     {
         WithCostUpgradeBy(-1);
         WithCards(3);
+        WithTip(DownfallTip.Offclass);
         WithKeyword(CardKeyword.Exhaust);
     }
 
@@ -26,6 +28,6 @@ public class SerpentIdol : SneckoCardModel
         if (selectedCard == null) return;
 
         selectedCard.SetToFreeThisTurn();
-        await CardPileCmd.Add(selectedCard, PileType.Hand);
+        await CardPileCmd.AddGeneratedCardsToCombat([selectedCard], PileType.Hand, Owner);
     }
 }

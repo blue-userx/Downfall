@@ -1,4 +1,6 @@
 ﻿using BaseLib.Extensions;
+using Champ.ChampCode.Events;
+using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -12,10 +14,15 @@ namespace Champ.ChampCode.Core;
 public abstract class ChampStanceModel : AbstractModel
 {
     private DynamicVarSet? _dynamicVars;
+    private Lazy<Texture2D?>? _lazyOver;
+
+    private Lazy<Texture2D?>? _lazyProgress;
+    private Lazy<Texture2D?>? _lazyUnder;
 
     private Player? _player;
-
     public int Charges;
+
+    public virtual int MaxCharges => 3;
 
     public DynamicVarSet DynamicVars
     {
@@ -28,6 +35,10 @@ public abstract class ChampStanceModel : AbstractModel
         }
     }
 
+    public IEnumerable<IHoverTip> HoverTips => [HoverTip, ..ExtraHoverTips];
+
+    protected virtual IEnumerable<IHoverTip> ExtraHoverTips => [];
+
     public IHoverTip HoverTip
     {
         get
@@ -35,6 +46,19 @@ public abstract class ChampStanceModel : AbstractModel
             var title = new LocString("champ_stances", $"{GetType().GetPrefix()}{Id.Entry}.title");
             var description = new LocString("champ_stances", $"{GetType().GetPrefix()}{Id.Entry}.description");
             DynamicVars.AddTo(description);
+            if (IsMutable)
+            {
+                description.Add("Infinite",
+                    _player is { Creature.CombatState: not null } &&
+                    ChampHook.IgnoreChargeCap(_player.Creature.CombatState, _player));
+                description.Add("Charges", Charges);
+            }
+            else
+            {
+                description.Add("Infinite", false);
+                description.Add("Charges", MaxCharges);
+            }
+
             return new HoverTip(title, description);
         }
     }
@@ -42,11 +66,25 @@ public abstract class ChampStanceModel : AbstractModel
 
     protected virtual IEnumerable<DynamicVar> CanonicalVars => [];
     public abstract bool HasFinisher { get; }
-    public virtual string? ChargeIconPath => null;
+    public virtual string? ChargeIconPathOver => null;
+    public virtual string? ChargeIconPathProgress => null;
+    public virtual string? ChargeIconPathUnder => null;
+    public Texture2D? ChargeTextureProgress => (_lazyProgress ??= CreateLazyTexture(ChargeIconPathProgress)).Value;
+    public Texture2D? ChargeTextureOver => (_lazyOver ??= CreateLazyTexture(ChargeIconPathOver)).Value;
+    public Texture2D? ChargeTextureUnder => (_lazyUnder ??= CreateLazyTexture(ChargeIconPathUnder)).Value;
+
+    public virtual Color? LabelOutlineColor => null;
+
     public Player Owner => _player ?? throw new InvalidOperationException("Not a mutable instance");
 
     public ICombatState CombatState => Owner.Creature.CombatState ??
                                        throw new InvalidOperationException("Combat state not initialized");
+
+    private static Lazy<Texture2D?> CreateLazyTexture(string? path)
+    {
+        return new Lazy<Texture2D?>(() =>
+            !string.IsNullOrEmpty(path) ? ResourceLoader.Load<Texture2D>(path) : null);
+    }
 
     protected override void DeepCloneFields()
     {
@@ -62,7 +100,7 @@ public abstract class ChampStanceModel : AbstractModel
 
     public void ResetCharges()
     {
-        Charges = 3;
+        Charges = MaxCharges;
         ChampModel.RefreshDisplay(Owner);
     }
 
@@ -83,7 +121,7 @@ public abstract class ChampStanceModel : AbstractModel
         return Task.CompletedTask;
     }
 
-    public virtual Task Finisher(PlayerChoiceContext ctx)
+    public virtual Task Finisher(PlayerChoiceContext ctx, bool affectsAllPlayers)
     {
         return Task.CompletedTask;
     }

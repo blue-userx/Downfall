@@ -1,7 +1,7 @@
 ﻿using Automaton.AutomatonCode.Core;
 using Automaton.AutomatonCode.Powers;
-using Automaton.AutomatonCode.Vfx;
 using BaseLib.Utils;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
@@ -13,15 +13,15 @@ public class SentientForm : AutomatonCardModel
 {
     public SentientForm() : base(3, CardType.Power, CardRarity.Rare, TargetType.Self)
     {
-        
-        this.WithPower<SentientFormPower>( 1, false);
+        WithPower<SentientFormPower>(1, false);
         WithTip(StaticHoverTip.ReplayStatic);
         WithKeyword(CardKeyword.Ethereal, UpgradeType.Remove);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await CommonActions.ApplySelf<SentientFormPower>(ctx, this);
-        NSequenceDisplay.Refresh(Owner, true);
+        // NSequenceDisplay.Refresh(Owner, true);
     }
 }

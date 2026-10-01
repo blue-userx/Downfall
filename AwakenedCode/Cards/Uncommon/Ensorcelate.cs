@@ -1,9 +1,9 @@
 using Awakened.AwakenedCode.Core;
-using Awakened.AwakenedCode.Powers;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Awakened.AwakenedCode.Cards.Uncommon;
 
@@ -22,6 +22,6 @@ public class Ensorcelate : AwakenedCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardBlock(this, DynamicVars.Block, cardPlay);
-        await CommonActions.ApplySelf<EnsorcelatePower>(ctx, this, 1);
+        await CommonActions.ApplySelf<FreePowerPower>(ctx, this, 1);
     }
 }

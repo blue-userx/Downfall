@@ -1,39 +1,46 @@
 using BaseLib.Abstracts;
-using BaseLib.Utils;
-using Downfall.DownfallCode.Compatibility;
-using Hexaghost.HexaghostCode.CustomEnums;
+using Downfall.DownfallCode.Core;
 using Hexaghost.HexaghostCode.Ghostflames;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Context;
-using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
-using static MegaCrit.Sts2.Core.Entities.Multiplayer.GameActionType;
+using MegaCrit.Sts2.Core.TestSupport;
 
 namespace Hexaghost.HexaghostCode.Core;
 
 public class HexaghostModel() : CustomSingletonModel(HookType.Combat)
 {
-    internal static readonly SpireField<Player, GhostflameModel[]> Wheel = new(StartingWheel);
+    internal static readonly PlayerField<GhostflameModel[]> Wheel = new(() => []);
+    internal static readonly PlayerField<bool> Active = new(() => false);
+    internal static readonly PlayerField<int> CurrentIndex = new(() => 0);
 
-    internal static readonly SpireField<Player, int> CurrentIndex = new(() => 0);
 
     private static GhostflameModel[] StartingWheel(Player player)
     {
-        return
-        [
-            HexaghostModelDb.Ghostflame<SearingGhostflame>().ToMutable(player),
-            HexaghostModelDb.Ghostflame<CrushingGhostflame>().ToMutable(player),
-            HexaghostModelDb.Ghostflame<BolsteringGhostflame>().ToMutable(player),
-            HexaghostModelDb.Ghostflame<SearingGhostflame>().ToMutable(player),
-            HexaghostModelDb.Ghostflame<CrushingGhostflame>().ToMutable(player),
-            HexaghostModelDb.Ghostflame<InfernoGhostflame>().ToMutable(player)
-        ];
+        return player.Character is Hexaghost
+            ?
+            [
+                HexaghostModelDb.Ghostflame<SearingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<CrushingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<BolsteringGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<SearingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<CrushingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<InfernoGhostflame>().ToMutable(player)
+            ]
+            :
+            [
+                HexaghostModelDb.Ghostflame<OffclassSearingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<OffclassCrushingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<OffclassBolsteringGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<OffclassSearingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<OffclassCrushingGhostflame>().ToMutable(player),
+                HexaghostModelDb.Ghostflame<OffclassInfernoGhostflame>().ToMutable(player)
+            ];
     }
 
     public override Task BeforeCombatStart()
@@ -43,76 +50,40 @@ public class HexaghostModel() : CustomSingletonModel(HookType.Combat)
         foreach (var player in state.Players)
         {
             ResetWheel(player);
-            HexaghostVisualsBridge.Refresh(player);
+            if (player.Character is Hexaghost) HexaghostCmd.ActivateGhostwheel(player);
+            HexaghostCmd.Refresh(player);
         }
+
         return Task.CompletedTask;
     }
 
     public static void ResetWheel(Player player)
     {
+        if (player.PlayerCombatState == null) return;
         Wheel[player] = StartingWheel(player);
         CurrentIndex[player] = 0;
     }
 
-
-    public override async Task BeforeSideTurnEnd(PlayerChoiceContext ctx, CombatSide side,
+    // we use AfterSideTurnEndLate instead of BeforeSideTurnEnd so thermal stone triggers on cards that got ethereal exhausted
+    // we have to care about order with HereAndNowPower
+    // has to be before AfterSideTurnEndLate for inferno ghostflamse
+    public override async Task AfterSideTurnEnd(PlayerChoiceContext ctx, CombatSide side,
         IEnumerable<Creature> participants)
     {
         if (side != CombatSide.Player) return;
         foreach (var player in RunManager.Instance.State?.Players ?? [])
-        {
-            if (player.Character is not Hexaghost) continue;
             if (HexaghostCmd.GetCurrentFlame(player).IsIgnited)
                 await HexaghostCmd.Advance(ctx, player, null, true, true);
-        }
     }
 
     public override async Task AfterCardExhausted(PlayerChoiceContext ctx, CardModel card, bool causedByEthereal)
     {
-        if (card.CombatState == null || card is not IHasAfterlifeEffect afterlifeEffect) return;
-        var a = card.CombatState.RunState.Rng.CombatTargets.NextItem(card.CombatState.HittableEnemies);
-        if (a == null) return;
-        var cardPlay = CardPlayCompat.Create(card, a, PileType.Exhaust, new ResourceInfo
+        if (card is not IHasAfterlifeEffect afterlifeEffect) return;
+        if (TestMode.IsOff) SfxCmd.Play("event:/sfx/characters/hexaghost-hexaghost/afterlife");
+        var playCount = await card.GeneratePlayCount(card.CombatState!, null);
+        for (var i = 0; i < playCount; ++i)
         {
-            EnergySpent = 0,
-            EnergyValue = 0,
-            StarsSpent = 0,
-            StarValue = 0
-        });
-        await afterlifeEffect.AfterlifeEffect(ctx, cardPlay);
-    }
-
-    internal static void SetupHexaghostCombatUi(CombatState state)
-    {
-        if (NCombatRoom.Instance is not { } combatRoom) return;
-        foreach (var player in state.Players)
-        {
-            if (player.Character is not Hexaghost) continue;
-            HexaghostVisualsBridge.DiscardDisplay(player);  
-            HexaghostVisualsBridge.Setup(combatRoom, player); 
+            await afterlifeEffect.AfterlifeEffect(ctx, null, true, causedByEthereal);
         }
-    }
-    public override async Task BeforeCardPlayed(CardPlay cardPlay)
-    {
-        var retract = cardPlay.Card.Keywords.Contains(HexaghostKeyword.Retract);
-        if (!retract) return;
-        if (LocalContext.NetId == null) return;
-        var ctx = new HookPlayerChoiceContext(
-            cardPlay.Card.Owner,
-            LocalContext.NetId.Value,
-            Combat);
-
-        var task = HexaghostCmd.Retract(ctx, cardPlay.Card.Owner, cardPlay.Card);
-        await ctx.AssignTaskAndWaitForPauseOrCompletion(task);
-        //var advance = cardPlay.Card.Keywords.Contains(HexaghostKeyword.Advance);
-        //if (advance) await HexaghostCmd.Advance(ctx, cardPlay.Card.Owner);
-    }
-
-    public override async Task AfterCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
-    {
-        //var retract = cardPlay.Card.Keywords.Contains(HexaghostKeyword.Retract);
-        //if (retract) await HexaghostCmd.Retract(ctx, cardPlay.Card.Owner);
-        var advance = cardPlay.Card.Keywords.Contains(HexaghostKeyword.Advance);
-        if (advance) await HexaghostCmd.Advance(ctx, cardPlay.Card.Owner, cardPlay.Card);
     }
 }

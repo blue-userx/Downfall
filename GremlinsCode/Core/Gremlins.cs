@@ -1,8 +1,11 @@
-﻿using Downfall.DownfallCode.Abstract;
+﻿using BaseLib.Abstracts;
+using BaseLib.Extensions;
+using Downfall.DownfallCode.Abstract;
 using Downfall.DownfallCode.Config;
-using Downfall.DownfallCode.Utils.Sound;
+
 using Godot;
 using Gremlins.GremlinsCode.Cards.Basic;
+using Gremlins.GremlinsCode.DynamicVars;
 using Gremlins.GremlinsCode.Relics;
 using Gremlins.GremlinsCode.Vfx;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -61,15 +64,7 @@ public class Gremlins : DownfallCharacterModel
     public override CardPoolModel CardPool => ModelDb.CardPool<GremlinsCardPool>();
     public override PotionPoolModel PotionPool => ModelDb.PotionPool<GremlinsPotionPool>();
     public override RelicPoolModel RelicPool => ModelDb.RelicPool<GremlinsRelicPool>();
-
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Gremlins/audio/character_select/STS_VO_GremlinAngry_1a.ogg", 25, 0.1f, 1, 10),
-        new ModSoundEntry("res://Gremlins/audio/character_select/STS_VO_GremlinCalm_1a.ogg", 25, 0.1f, 1, 10),
-        new ModSoundEntry("res://Gremlins/audio/character_select/STS_VO_GremlinDopey_1a.ogg", 25, 0.1f, 1, 10),
-        new ModSoundEntry("res://Gremlins/audio/character_select/STS_VO_GremlinFat_1a.ogg", 25, 0.1f, 1, 10),
-        new ModSoundEntry("res://Gremlins/audio/character_select/STS_VO_GremlinNob_1a_v3.ogg", 5, 0.1f, 1, 10)
-    );
-
+    
     public override NCreatureVisuals? CreateCustomVisuals()
     {
         return GD.Load<PackedScene>("res://Gremlins/scenes/character/combat.tscn")
@@ -92,7 +87,13 @@ public abstract class GremlinsCardModel(
     TargetType targetType,
     bool showInCardLibrary = true,
     bool autoAdd = true)
-    : DownfallCardModel<Gremlins>(cost, type, rarity, targetType, showInCardLibrary, autoAdd);
+    : DownfallCardModel<Gremlins>(cost, type, rarity, targetType, showInCardLibrary, autoAdd)
+{
+    protected ConstructedCardModel WithTempHp(int baseValue, int upgrade = 0)
+    {
+        return WithVars(new TempHpVar(baseValue).WithUpgrade(upgrade));
+    }
+}
 
 public class GremlinsPotionPool : DownfallPotionPool<Gremlins>;
 

@@ -1,36 +1,30 @@
-using System.Net.Http.Headers;
-using System.Reflection;
-using System.Text;
-using System.Text.Json;
+﻿using System.Reflection;
 using BaseLib.Config;
-using BaseLib.Extensions;
 using BaseLib.Patches.Features;
 using BaseLib.Patches.Saves;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Abstract;
+using Downfall.DownfallCode.Audio;
 using Downfall.DownfallCode.Config;
 using Downfall.DownfallCode.CustomEnums;
+using Downfall.DownfallCode.Data;
 using Downfall.DownfallCode.Localization;
 using Downfall.DownfallCode.Nodes;
 using Downfall.DownfallCode.Patches;
 using Downfall.DownfallCode.Utils;
 using Downfall.DownfallCode.Voting;
-using Godot;
 using Godot.Bridge;
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Saves.Runs;
-using HttpClient = System.Net.Http.HttpClient;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
 namespace Downfall.DownfallCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class DownfallMainFile : Node
+public static class DownfallMainFile
 {
     public const string ModId = "Downfall"; //At the moment, this is used only for the Logger and harmony names.
 
@@ -39,95 +33,86 @@ public partial class DownfallMainFile : Node
 
     public static void Initialize()
     {
+        BundledSubmodLocRegistry.Register(ModId);
+        PostInitRegistry.Register(PostModelInit);
         CustomLocTableManager.Register("card_modifiers");
         CustomLocTableManager.Register("artists");
+        CustomLocTableManager.Register("voting_ui");
         ExtendedSaveTypes.RegisterListSaveType<SerializableCard>();
         ModConfigRegistry.Register(ModId, new DownfallConfig());
-        
+
         ScriptManagerBridge.LookupScriptsInAssembly(Assembly.GetExecutingAssembly());
         DownfallPatchManager.HarmonyPatches();
         //Patch(Assembly.GetExecutingAssembly(), ModId);
 
 
         NCustomCardHolder.InitPool();
-        ModManager.OnMetricsUpload += OnMetricsUpload;
-        
+        ModManager.OnMetricsUpload += DownfallMetrics.OnMetricsUpload;
+
         CardTitleHooks.Register((card, title) =>
         {
-            if (!card.IsEcho()) return title; 
+            if (!card.IsEcho) return title;
             var echoLoc = new LocString("card_keywords", "DOWNFALL-ECHO.card_title");
             echoLoc.Add("card", title);
             return echoLoc.GetFormattedText();
         });
-        PostInitRegistry.Register(() =>
-        {
-            CustomTargetType.RegisterMultiTargetType(DownfallTargetType.MeAndEnemies,  (target, player) => target is { IsAlive: true, IsPet: false, IsEnemy: true } || target == player.Creature);
-            LogRegisteredCounts();
-        });
         
-        /*
+        
+        
         MainMenuButtonRegistry.Register(new MainMenuButtonRegistry.Entry
         {
-            Label = "Art Voting",
-            IsVisible = () => DownfallConfig.DevMode,
+            Label = "Art Voting", // fallback if the loc table entry is somehow missing
+            LocLabel = new LocString("main_menu_ui", "DOWNFALL-ART_SUBMISSION"),
+            IsVisible = () => DownfallConfig.ShowArtSubmissionButton,
             SubmenuType = typeof(NArtVotingScreen),
             CreateSubmenu = NArtVotingScreen.Create,
             OnPress = stack =>
             {
-                if (VotingApi.Instance == null)
-                    stack?.GetTree().Root.AddChild(new VotingApi());
                 stack?.PushSubmenuType<NArtVotingScreen>();
             }
-        });*/
+        });
 
-        LocFormatterRegistry.Register(
-            new PowerIconFormatter(),
-            new PreviewPluralFormatter(),
-            new PreviewValueFormatter(),
-            new PlusIfUpgradedFormatter());
+        // mention downfall sts1 credits somewhere
+        ModCredits.Register(ModId,
+            new ModCredits.Section("TEAM", ModCredits.Layout.Roles),
+            new ModCredits.Section("HELP", ModCredits.Layout.Roles),
+            new ModCredits.Section("ART"),
+            new ModCredits.Section("SOUND"),
+            new ModCredits.Section("LOC", Children:
+            [
+                new ModCredits.Section("LOC_ZHS"),
+                new ModCredits.Section("LOC_FRA"),
+                new ModCredits.Section("LOC_ITA"),
+                new ModCredits.Section("LOC_RUS"),
+                new ModCredits.Section("LOC_KOR"),
+                //     new ModCredits.Section("LOC_PTB"),
+                //     new ModCredits.Section("LOC_DEU"),
+                new ModCredits.Section("LOC_JPN")
+            ]),
+            new ModCredits.Section("STS1")
+        );
+        //FmodStudioDeferredBankRegistration.RegisterBank("res://Downfall/audio/Master.bank");
+        FmodStudio.RegisterBank("res://Downfall/audio/Master.strings.bank");
+        FmodStudio.RegisterBank("res://Downfall/audio/Downfall.bank");
     }
 
-   
-
-    private static void OnMetricsUpload(SerializableRun run, bool isVictory, ulong localPlayerId)
+    private static void PostModelInit()
     {
-        if (!DownfallConfig.UploadMetrics) return;
-        if (run.Players.All(e =>
-                e.CharacterId == null ||
-                ModelDb.GetById<CharacterModel>(e.CharacterId) is not DownfallCharacterModel)) return;
-        var anonymized = run.Anonymized();
-        var json = JsonSerializer.Serialize(anonymized);
-        _ = SendToServer(json);
+        CustomTargetType.RegisterMultiTargetType(DownfallTargetType.MeAndEnemies,
+            (target, player) =>
+                target is { IsAlive: true, IsPet: false, IsEnemy: true } || target == player.Creature);
+        LogRegisteredCounts();
+        CustomPowerInstanceType.RegisterAll();
     }
 
-    private static async Task SendToServer(string json)
+    public static string GetDownfallVersion()
     {
-        var bytes = Encoding.UTF8.GetBytes(json);
-        using var client = new HttpClient();
-        client.Timeout = TimeSpan.FromSeconds(15);
-        var content = new ByteArrayContent(bytes);
-        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        try
-        {
-            // TODO
-            var response = await client.PutAsync("http://localhost:3000/runs", content);
-            if (response.IsSuccessStatusCode)
-                Logger.Info("Upload successful!");
-            else
-                Logger.Warn($"Upload failed: {response.StatusCode}");
-        }
-        catch (HttpRequestException ex)
-        {
-            Logger.Warn($"Upload failed due to network error: {ex.Message}");
-        }
-        catch (TaskCanceledException ex)
-        {
-            Logger.Warn($"Upload timed out: {ex.Message}");
-        }
+        var mod = ModManager.GetLoadedMods().FirstOrDefault(m => m.manifest?.id == "Downfall");
+
+        return mod?.manifest?.version ?? "unknown";
     }
-    
-    
-    
+
+
     private static void LogRegisteredCounts()
     {
         var modAssembly = typeof(DownfallMainFile).Assembly;
@@ -145,9 +130,5 @@ public partial class DownfallMainFile : Node
 
         var powers = ModelDb.AllPowers.Count(p => p.GetType().Assembly == modAssembly);
         Logger.Info($"Powers: {powers}");
-
-        foreach (var character in ModelDb.AllCharacters.OfType<DownfallCharacterModel>())
-            if (character.CharacterSelectSfxEntry is { } effect)
-                SfxOverrideRegistry.Register(character.CharacterSelectSfx, effect);
     }
 }

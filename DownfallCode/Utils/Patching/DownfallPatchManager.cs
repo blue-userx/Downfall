@@ -1,0 +1,92 @@
+﻿using Downfall.DownfallCode.Abstract;
+using Downfall.DownfallCode.Compatibility;
+using Downfall.DownfallCode.Patches;
+using Downfall.DownfallCode.Patches.KaleidoscopePatch;
+
+namespace Downfall.DownfallCode.Utils;
+
+public class DownfallPatchManager
+{
+    public static void HarmonyPatches()
+    {
+        var patcher = ModPatcher.Create(DownfallMainFile.ModId, DownfallMainFile.Logger)
+            .Add(typeof(ModelDbInitPatch))
+            .Add(typeof(CombatUiActivatePatch))
+            .Add(typeof(ModifyDamageInternalPatch))
+            .Add(typeof(CustomAfflictionModel.AfflictionModelOverlayPathPatch))
+            .Add(typeof(CardDescriptionPatch))
+            .Add(typeof(GetCardTextPatch))
+            .Add(typeof(SetCardContextPatch))
+            .Add(typeof(PatchCardTitle))
+            .Add(typeof(ReplayCountPatch))
+            .Add(typeof(VigorRetainPatch))
+            .Add(typeof(KeywordColorPatch))
+            .Add(typeof(AddArtistHoverTipPatch))
+            .Add(typeof(RichTextEffectRegistryPatch))
+            .Add(typeof(MaxUpgradeLevelPatch))
+            .Add(typeof(StackingUpgradeDowngradePatch))
+            .Add(typeof(AddExtraHpBarPatch))
+            .Add(typeof(CustomIntentLabelPatch))
+            .Add(typeof(CardOverlayPatch))
+            .Add(typeof(CardColorPatch))
+            .Add(typeof(ColorfulPhilosophersPatch))
+            .Add(typeof(FindOnTablePatch))
+            .Add(typeof(FromChooseACardScreenPatch))
+            .Add(typeof(GetModdedLocTablesPatch))
+            .Add(typeof(ModifyCardDescriptionPatch))
+            .Add(typeof(PowerShouldRemoveDueToZeroPatch))
+            .Add(typeof(DeferredInitializationFmodFlushPatch))
+            .Add(typeof(NCardUpdateTypePlaquePatch))
+            .Add(typeof(RefreshConditionalNextStatesPatch))
+            .Add(typeof(PluralRulesPatch))
+            .Add(typeof(TranscendenceTransformationPatch))
+            .Add(typeof(CardModifierGlowGoldPatch))
+            .Add(typeof(ForceVisitIndexConsolePatch))
+            .Add(typeof(TopBarInitializePatch))
+            .Add(typeof(CombatPilesContainerPatch))
+            .Add(typeof(OnClearBlockPatch))
+            .Add(typeof(NewRunPatch))
+            .Add(typeof(DeathInterceptPatch))
+            .Add(typeof(CustomPowerIconPatch))
+            .Add(typeof(CardOverlayPatches))
+            .Add(typeof(CreatureNavigationLinkPatch))
+            .Add(typeof(FindExistingInstanceForStackingPatch))
+            .Add(typeof(IgnoreDexterityPatch))
+            .Add(typeof(InvokeSilentDisplayAmountChangedPatch))
+            //.Add(typeof(EnchantmentModelCanEnchantCardVeto))
+            .Add(typeof(CardCmdTransformTransformHook))
+            .Add(typeof(DeferredInitializationFmodFlushPatch))
+            .Add(typeof(MainMenuButtonsPatch))
+            .Add(typeof(MainMenuButtonsVisibilityPatch))
+            .Add(typeof(CustomSubmenuPatch))
+            .Add(typeof(UnsettlingLampRegisterAllCardDebuffs))
+            .Add(typeof(PersonalHivePowerExemptPatch))
+            .Add(typeof(ScrollBoxesCustomBundlePatch));
+
+        patcher.Add(typeof(KaleidoscopePoolFilter))
+            .Add(typeof(RunConfigSyncHook))
+            .Add(typeof(PrismaticGemPoolFilter));
+
+        patcher.Add(GameVersion.HasResolveTurnEndCardEffects
+            ? typeof(ReturnToHandAfterTurnEndPatchBeta)
+            : typeof(ReturnToHandAfterTurnEndPatchMain));
+
+        patcher.Add(GameVersion.HasNCardUpdatePortrait
+            ? typeof(NCardUpdatePortraitPatch)
+            : typeof(NCardReloadPortraitPatch));
+
+        foreach (var patch in CardPlayLocationCompat.PatchTypes)
+            patcher.Add(patch);
+
+        // Todo : only for 0.110.1
+        // /*
+        // patcher.Add(typeof(VoidFormBonePatch))
+        //     .Add(typeof(ReaperFormBonePatch))
+        //     .Add(typeof(SerpentFormBonePatch))
+        //     .Add(typeof(EchoFormBonePatch));
+        //     */
+        FormBonePatcher.Apply(patcher.Harmony, DownfallMainFile.Logger);
+
+        patcher.PatchAll();
+    }
+}

@@ -19,9 +19,12 @@ public class ChosenVersePower : AwakenedPowerModel
 
     public override PowerInstanceType InstanceType => PowerInstanceType.Instanced;
 
-    public void SetBlock(int block)
+    protected override int? SecondAmount => DynamicVars.Block.IntValue;
+
+    public void SetBlock(decimal block)
     {
         DynamicVars.Block.BaseValue = block;
+        this.InvokeSilentDisplayAmountChanged();
     }
 
     public override async Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)

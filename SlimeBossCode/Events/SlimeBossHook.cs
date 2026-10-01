@@ -1,4 +1,5 @@
-﻿using Downfall.DownfallCode.Events;
+﻿using BaseLib.Utils;
+using Downfall.DownfallCode.Events;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -11,49 +12,29 @@ namespace SlimeBoss.SlimeBossCode.Events;
 public static class SlimeBossHook
 {
     public static Task AfterConsumeEffect(ICombatState cs, PlayerChoiceContext ctx, Creature creature,
-        Creature attacker, int amount)
+        Creature attacker)
     {
-        return DownfallHook.Dispatch<IAfterConsumeEffect>(cs,
-            e => e.AfterConsumeEffect(ctx, creature, attacker, amount));
+        return MyHookUtils.Dispatch<IAfterConsumeEffect>(cs,
+            e => e.AfterConsumeEffect(ctx, creature, attacker), MyHookUtils.HookScope.CombatRaw);
     }
-
-    public static int ModifyGoopConsume(ICombatState cs, int originalAmount,
-        out IEnumerable<IModifyGoopConsume> modifiers, Creature creature, Creature? applier)
-    {
-        return DownfallHook.Modify(cs, originalAmount, (e, a) => e.ModifyGoopConsume(a, creature, applier),
-            out modifiers);
-    }
-
-    public static Task AfterModifyingGoopConsume(ICombatState cs, IEnumerable<IModifyGoopConsume> modifiers,
-        Creature creature, Creature? applier)
-    {
-        return DownfallHook.AfterModifying(cs, modifiers, e => e.AfterModifyingGoopConsume(creature, applier));
-    }
-
 
     public static int ModifySecondarySlimeEffects(ICombatState cs, int originalAmount,
         out IEnumerable<IModifySecondarySlimeEffects> modifiers, SlimeModel slime)
     {
-        return DownfallHook.Modify(cs, originalAmount, (e, a) => e.ModifySecondarySlimeEffects(a, slime),
+        return HookUtils.Modify(cs, originalAmount, (e, a) => e.ModifySecondarySlimeEffects(a, slime),
             out modifiers);
     }
 
-    public static Task AfterSplit(ICombatState cs, Player player, SlimeModel slime)
+    public static Task AfterSplit(ICombatState cs, PlayerChoiceContext ctx, Player player, SlimeModel slime)
     {
-        return DownfallHook.Dispatch<IAfterSplit>(cs,
-            e => e.AfterSplit(player, slime));
+        return HookUtils.Dispatch<IAfterSplit>(cs, ctx, 
+            e => e.AfterSplit(ctx, player, slime));
     }
 
-    public static int ModifyConsumeCount(ICombatState cs, Player player, int amount, CardModel? cardSource,
-        out IEnumerable<IModifyConsumeCount> modifiers)
+    public static Task AfterCommand(ICombatState cs, PlayerChoiceContext ctx, Player player, SlimeModel slime,
+        CardModel? source, bool isAutomatic)
     {
-        return DownfallHook.Modify(cs, amount, (e, a) => e.ModifyConsumeCount(player, a, cardSource),
-            out modifiers);
-    }
-
-    public static Task AfterModifyingConsumeCount(ICombatState cs, IEnumerable<IModifyConsumeCount> modifiers,
-        Player player, CardModel? cardSource)
-    {
-        return DownfallHook.AfterModifying(cs, modifiers, e => e.AfterModifyingConsumeCount(player, cardSource));
+        return HookUtils.Dispatch<IAfterCommand>(cs, ctx,
+            e => e.AfterCommand(ctx, player, slime, source, isAutomatic));
     }
 }

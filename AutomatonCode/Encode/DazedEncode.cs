@@ -9,17 +9,26 @@ using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace Automaton.AutomatonCode.Encode;
 
-public class DazedEncode : Encodable
+public class DazedEncode : ValueEncode
 {
+    public override string Id => "DAZED_ENCODE";
+    public override int Order => 9;
+
     public override TargetType Target => TargetType.Self;
     public override CardType Type => CardType.Skill;
+    public override DynamicVar FunctionDynamicVar => new("Dazed", 0);
+
     public override Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
-        var player = model.GetCreature().Player;
-        return player == null ? Task.CompletedTask : DownfallCardCmd.GiveCards<Dazed>(player, PileType.Draw, model.GetDynamicVars()["Dazed"].BaseValue);
+        var player = model.Creature.Player;
+        return player == null
+            ? Task.CompletedTask
+            : DownfallCardCmd.GiveCards<Dazed>(player, PileType.Draw, model.DynamicVars["Dazed"].BaseValue,
+                CardPilePosition.Random);
     }
-    public override DynamicVar FunctionDynamicVar => new("Dazed", 0);
-    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model) => [HoverTipFactory.FromCard<Dazed>()];
-    public override DynamicVar DynamicVar(AbstractModel model) => model.GetDynamicVars()["Dazed"];
-    
+
+    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model)
+    {
+        return [HoverTipFactory.FromCard<Dazed>()];
+    }
 }

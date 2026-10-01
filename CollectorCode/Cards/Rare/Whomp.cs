@@ -1,11 +1,12 @@
-using BaseLib.Extensions;
 using BaseLib.Utils;
+using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
-using Collector.CollectorCode.CustomEnums;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Commands;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace Collector.CollectorCode.Cards.Rare;
 
@@ -14,10 +15,10 @@ public class Whomp : CollectorCardModel
 {
     public Whomp() : base(2, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
-        WithDamage(12, 3);
-        WithVars(new SummonVar(12).WithUpgrade(3));
+        WithDamage(14, 3);
+        WithKindle(11, 3);
+        WithUpgradeChangingCardTip<Burn, Ember>(null, (e, _) => CardCmd.Upgrade(e));
         WithKeyword(CardKeyword.Exhaust);
-        WithTip(CollectorTip.Kindle);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
@@ -25,6 +26,10 @@ public class Whomp : CollectorCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        await CollectorCmd.SummonTorchhead(ctx, Owner, DynamicVars.Summon.IntValue, this);
+        await TorchheadCmd.Kindle(ctx, this);
+        if (IsUpgraded)
+            await DownfallCardCmd.GiveCard<Ember>(Owner, PileType.Hand, upgraded: true);
+        else 
+            await DownfallCardCmd.GiveCard<Burn>(Owner, PileType.Hand);
     }
 }

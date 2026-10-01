@@ -1,41 +1,50 @@
-﻿using BaseLib.Abstracts;
+﻿using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
+using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Localization.DynamicVars;
-using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models;
 
 namespace Collector.CollectorCode.Powers;
 
-public class EmpowerPower : CollectorPowerModel, IHasSecondAmount
+public class EmpowerPower : CollectorPowerModel
 {
     public EmpowerPower()
     {
-        WithVars(new IntVar("Turns", 2));
+        WithCards(0);
+        WithCardTip<Ember>(Upgrade);
     }
 
     public override PowerInstanceType InstanceType => PowerInstanceType.Instanced;
-
-    public string GetSecondAmount()
+    protected override int? SecondAmount => DynamicVars.Cards.IntValue;
+    
+    public void SetCards(int amount)
     {
-        return $"{DynamicVars["Turns"].BaseValue}";
+        DynamicVars.Cards.BaseValue = amount;
+        this.InvokeSilentDisplayAmountChanged();
     }
-
-    public void SetTurns(decimal turns)
+    
+    private void Upgrade(Ember obj) => Upgrade(obj, this);
+    private static void Upgrade(Ember obj, PowerModel power)
     {
-        DynamicVars["Turns"].BaseValue = turns;
-        InvokeDisplayAmountChanged();
+        for (var i = 0; i < power.DynamicVars.Cards.BaseValue; i++)
+        {
+            CardCmd.Upgrade(obj);
+        }
     }
-
+    
     public override async Task BeforeHandDraw(Player player, PlayerChoiceContext ctx, ICombatState combatState)
     {
         if (player.Creature != Owner) return;
-        DynamicVars["Turns"].UpgradeValueBy(-1);
-        InvokeDisplayAmountChanged();
-        await PowerCmd.Apply<StrengthPower>(ctx, Owner, Amount, Owner, null);
-        if (DynamicVars["Turns"].BaseValue <= 0) await PowerCmd.Remove(this);
+        await DownfallCardCmd.GiveCard<Ember>(player, PileType.Hand, action: Upgrade);
+        //await MyCommonActions.ApplySelf<StrengthPower>(ctx, this);
+        Flash();
+        await PowerCmd.Decrement(this);
     }
+
+  
 }

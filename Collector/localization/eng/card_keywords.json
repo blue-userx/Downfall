@@ -1,4 +1,8 @@
 ﻿{
-  "COLLECTOR-PYRE.description": "Requires exhausting a card in [gold]Hand[/gold] in addition to paying its energy cost.",
-  "COLLECTOR-PYRE.title": "Pyre"
+  "COLLECTOR-PYRE.description": "Requires [gold]Exhausting[/gold] a card in your [gold]Hand[/gold] to be played.",
+  "COLLECTOR-PYRE.title": "Pyre",
+  "COLLECTOR-MEGAPYRE.description": "Requires [gold]Exhausting[/gold] ALL cards in your [gold]Hand[/gold] to be played.",
+  "COLLECTOR-MEGAPYRE.title": "Megapyre",
+  "COLLECTOR-FLICKER.description": "This card's effects activate when it is [gold]Exhausted[/gold] rather than when it is played.",
+  "COLLECTOR-FLICKER.title": "Flicker"
 }

@@ -11,17 +11,16 @@ namespace Collector.CollectorCode.Cards.Rare;
 [Pool(typeof(CollectorCardPool))]
 public class FingerOfDeath : CollectorCardModel, IUsesCollectorEnergyOnly
 {
-    public FingerOfDeath() : base(4, CardType.Skill, CardRarity.Rare, TargetType.AnyEnemy)
+    public FingerOfDeath() : base(4, CardType.Skill, CardRarity.Rare, TargetType.AllEnemies)
     {
-        WithPower<CollectorDoomPower>(60);
+        WithPower<MiasmaPower>(54, 10);
+        WithReserveTip();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
-
-    public override TargetType TargetType => IsUpgraded ? TargetType.AllEnemies : TargetType.AnyEnemy;
-
+    
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.Apply<CollectorDoomPower>(ctx, this, cardPlay);
+        await CommonActions.Apply<MiasmaPower>(ctx, this, cardPlay);
     }
 }

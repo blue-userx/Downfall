@@ -13,10 +13,10 @@ public class AncientPower : GuardianCardModel, IGemSocketCard
 {
     public AncientPower() : base(1, CardType.Skill, CardRarity.Common, TargetType.Self)
     {
-        this.WithPower<AncientStrengthPower>(3, 1, false);
-        this.WithPower<AncientDexterityPower>(3, 1, false);
-        this.WithTip<StrengthPower>();
-        this.WithTip<DexterityPower>();
+        WithPower<AncientStrengthPower>(3, 1, false);
+        WithPower<AncientDexterityPower>(3, 1, false);
+        WithTip<StrengthPower>();
+        WithTip<DexterityPower>();
     }
 
     public int GemSlots => 1;
@@ -28,6 +28,6 @@ public class AncientPower : GuardianCardModel, IGemSocketCard
     }
 }
 
-
 public class AncientStrengthPower : CustomTemporaryPowerModelWrapper<AncientPower, StrengthPower>;
+
 public class AncientDexterityPower : CustomTemporaryPowerModelWrapper<AncientPower, DexterityPower>;

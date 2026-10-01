@@ -2,7 +2,6 @@ using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Hermit.HermitCode.Powers;
 using Hermit.HermitCode.Utils;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -14,7 +13,7 @@ public sealed class Quickdraw : HermitCardModel
     {
         WithDamage(9, 2);
         WithCards(2, 1);
-        this.WithPower<DrawFewerCardsNextTurnPower>(1, false);
+        WithPower<DrawFewerCardsNextTurnPower>(1, false);
     }
 
     protected override Artist Artist => Artist.Get<AlexMdle>();
@@ -22,7 +21,7 @@ public sealed class Quickdraw : HermitCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay play)
     {
-        await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
+        // await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
         await CommonActions.CardAttack(this, play).WithHermitBluntLightHitFx()
             .Execute(ctx);
         await CommonActions.Draw(this, ctx);

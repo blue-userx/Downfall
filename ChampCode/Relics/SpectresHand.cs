@@ -1,7 +1,6 @@
 using BaseLib.Utils;
 using Champ.ChampCode.Cards.Basic;
 using Champ.ChampCode.Core;
-using Champ.ChampCode.CustomEnums;
 using Champ.ChampCode.Events;
 using Champ.ChampCode.Stance;
 using Downfall.DownfallCode.Commands;
@@ -19,11 +18,9 @@ public class SpectresHand : ChampRelicModel, IOnChampStanceChange
 {
     public SpectresHand() : base(RelicRarity.Rare)
     {
-        WithTip(ChampTip.Stance);
         WithTip(DownfallKeyword.Echo);
-        
     }
-    
+
     public async Task OnChampStanceChange(PlayerChoiceContext ctx, Player player, ChampStanceModel oldStance,
         ChampStanceModel newStance)
     {

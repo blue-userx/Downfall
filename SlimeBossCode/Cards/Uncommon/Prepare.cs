@@ -11,11 +11,10 @@ public class Prepare : SlimeBossCardModel
 {
     public Prepare() : base(2, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
-        WithBlock(10, 5);
+        WithBlock(10, 4);
         WithEnergy(1);
-        this.WithPower<EnergyNextTurnPower>(1, false);
-        this.WithPower<DrawCardsNextTurnPower>(2, false);
-        WithKeyword(CardKeyword.Exhaust);
+        WithPower<EnergyNextTurnPower>(1, false);
+        WithPower<DrawCardsNextTurnPower>(1, false);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)

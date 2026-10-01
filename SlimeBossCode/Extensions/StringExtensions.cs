@@ -2,8 +2,11 @@
 
 public static class StringExtensions
 {
-    public static string SlimeScenePath(this string path)
+    extension(string path)
     {
-        return Downfall.DownfallCode.Extensions.StringExtensions.ScenePath(SlimeBossMainFile.ModId, "slimes", path);
+        public string SlimeScenePath()
+        {
+            return Downfall.DownfallCode.Extensions.StringExtensions.ScenePath(SlimeBossMainFile.ModId, "slimes", path);
+        }
     }
 }

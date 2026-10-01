@@ -1,14 +1,12 @@
-using BaseLib.Extensions;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Commands;
 using Downfall.DownfallCode.Powers;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace Hexaghost.HexaghostCode.Cards.Ancient;
 
@@ -17,23 +15,26 @@ public class Apocryphra : HexaghostCardModel, IHasAfterlifeEffect
 {
     public Apocryphra() : base(1, CardType.Attack, CardRarity.Ancient, TargetType.AllEnemies)
     {
-        this.WithAfterlife();
+        WithAfterlife();
         WithDamage(5, 2);
         WithPower<SoulBurnPower>(5, 2);
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();
-    
-    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+
+    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay? cardPlay, bool wasExhausted,
+        bool causedByEthereal)
     {
-        await PowerCmd.Apply<SoulBurnPower>(ctx, CombatState!.HittableEnemies,
-            DynamicVars.Power<SoulBurnPower>().BaseValue, Owner.Creature, this);
+        foreach (var soulBurnPower in CombatState!.HittableEnemies) await SoulBurnPower.SoulburnEffect(soulBurnPower);
+        await MyCommonActions.ApplyToAllEnemies<SoulBurnPower>(ctx, this);
+
         await CardPileCmd.Add(this, PileType.Hand);
+        if (wasExhausted && causedByEthereal) GiveSingleTurnRetain();
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        await AfterlifeEffect(ctx, cardPlay);
+        await AfterlifeEffect(ctx, cardPlay, false, false);
     }
 }

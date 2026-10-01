@@ -1,5 +1,6 @@
 using BaseLib.Abstracts;
 using BaseLib.Utils;
+using Downfall.DownfallCode.Core;
 using Guardian.GuardianCode.Cards.Abstract;
 using Guardian.GuardianCode.Displays;
 using Guardian.GuardianCode.Events;
@@ -7,7 +8,6 @@ using Guardian.GuardianCode.Interfaces;
 using Guardian.GuardianCode.Piles;
 using Guardian.GuardianCode.Powers;
 using Guardian.GuardianCode.RestSiteOptions;
-using Guardian.GuardianCode.Vfx;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -15,19 +15,26 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace Guardian.GuardianCode.Core;
 
 public class GuardianCombatModel() : CustomSingletonModel(HookType.Combat)
 {
     // SpireFields
-    internal static readonly SpireField<Player, GuardianModeModel> ActiveMode =
+    internal static readonly PlayerField<GuardianModeModel> ActiveMode =
         new(GuardianModelDb.GuardianMode<GuardianNormalMode>);
 
-    internal static readonly SpireField<Player, int> StasisSlots = new(() => -1);
+    internal static readonly PlayerField<int> StasisSlots = new(() => -1);
     internal static readonly SpireField<CardModel, int> StasisCounter = new(_ => 0);
+
+    // The card, if any, a IModifyCardPlayResultLocation redirect (Reroute) has already committed
+    // to sending into Stasis this play but that hasn't physically moved there yet — see
+    // GetEffectiveStasisCount. A single slot, not a collection: card plays for one player are
+    // never concurrent, so at most one redirect can be in flight at a time.
+    internal static readonly PlayerField<CardModel?> PendingStasisRedirect = new(() => null);
 
     // Hooks
     public override async Task BeforeHandDraw(Player player, PlayerChoiceContext ctx, ICombatState combatState)
@@ -36,13 +43,44 @@ public class GuardianCombatModel() : CustomSingletonModel(HookType.Combat)
         {
             await PowerCmd.Apply<ModeShiftPower>(ctx, player.Creature, 20, player.Creature, null, true);
             await GuardianCmd.LeaveDefensiveMode(ctx, player);
-        };
+        }
+
         await GuardianCmd.TickAll(player, ctx);
         GuardianDisplay.Refresh(player);
     }
 
+    public override Task BeforeCombatStart()
+    {
+        // StasisSlots/ActiveMode/PendingStasisRedirect are PlayerField<T> - keyed by
+        // Player.PlayerCombatState, which is a brand-new object every combat, so a fresh combat can
+        // never see a previous combat's values for them even without clearing (and PlayerField now
+        // also self-clears on CombatEnded - see PlayerField.cs). StasisCounter is a raw
+        // SpireField<CardModel, int> instead, so it still needs its own explicit reset here.
+        StasisCounter._table.Clear();
+
+        foreach (var player in RunManager.Instance.State?.Players ?? [])
+        {
+            if (StasisSlots[player] < 0)
+                StasisSlots.Set(player, player.Character is Guardian ? 3 : 1);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public override Task AfterCombatEnd(CombatRoom room)
+    {
+        StasisCounter._table.Clear();
+        return Task.CompletedTask;
+    }
+
+
     public override Task AfterCardChangedPilesLate(CardModel card, PileType oldPileType, AbstractModel? source)
     {
+        // The redirected card's play has resolved one way or another (landed in Stasis, or ended
+        // up elsewhere for some other reason) — clear the reservation the instant we know, rather
+        // than waiting for the next GetEffectiveStasisCount caller to notice.
+        if (PendingStasisRedirect[card.Owner] == card) PendingStasisRedirect[card.Owner] = null;
+
         if (card.Pile != null && card.Pile.Type != GuardianPile.Stasis) return Task.CompletedTask;
         GuardianDisplay.Refresh(card.Owner);
         return Task.CompletedTask;
@@ -52,10 +90,7 @@ public class GuardianCombatModel() : CustomSingletonModel(HookType.Combat)
     {
         var combatRoomNode = NCombatRoom.Instance;
         if (combatRoomNode == null) return;
-
-        foreach (var player in state.Players)
-            StasisSlots.Set(player, -1);
-
+        
         foreach (var player in state.Players)
         {
             if (player.Character is not Guardian) continue;
@@ -70,10 +105,24 @@ public class GuardianCombatModel() : CustomSingletonModel(HookType.Combat)
         return pile;
     }
 
+    /// <summary>
+    ///     Stasis occupancy including a card Reroute has already committed to sending into Stasis
+    ///     this play but that is still resolving its own effect (see
+    ///     <see cref="PendingStasisRedirect" />). Without this, a card whose own effect independently
+    ///     stasis'd another card would still land in Stasis itself afterward via Reroute's earlier
+    ///     decision — decided before that effect ran — overflowing the pile past its slot cap.
+    ///     <see cref="AfterCardChangedPilesLate" /> clears the pending slot the instant that card's
+    ///     play resolves, so there's nothing left to prune here.
+    /// </summary>
+    internal static int GetEffectiveStasisCount(Player player)
+    {
+        var pile = GetOrInitStasis(player);
+        return pile.Cards.Count + (PendingStasisRedirect[player] != null ? 1 : 0);
+    }
+
     internal static void InitStasisUi(Player player)
     {
-        if (StasisSlots[player] < 0)
-            StasisSlots.Set(player, player.Character is Guardian ? 3 : 1);
+       
 
         var combatRoom = NCombatRoom.Instance;
         if (combatRoom != null && !GuardianDisplay.HasDisplay(player))
@@ -90,22 +139,19 @@ public class GuardianCombatModel() : CustomSingletonModel(HookType.Combat)
         var mutable = newCanonical.ToMutable(player);
         ActiveMode[player] = mutable;
         await mutable.OnEnter();
-        await Cmd.Wait(0.2f);
-        TriggerModeAnimation(player);
-        await Cmd.Wait(0.2f);
+        if (newCanonical is GuardianDefensiveMode)
+        {
+            await CreatureCmd.TriggerAnim(player.Creature, "TransitionIn", 0.5f);
+        }
+        else
+        {
+            await CreatureCmd.TriggerAnim(player.Creature, "TransitionOut", 0.5f);
+        }
+
         await GuardianHook.AfterGuardianModeChangeEarly(player.Creature.CombatState!, ctx, player, current!,
             ActiveMode[player]!);
         await GuardianHook.AfterGuardianModeChange(player.Creature.CombatState!, ctx, player, current!,
             ActiveMode[player]!);
-    }
-
-    private static void TriggerModeAnimation(Player player)
-    {
-        var creatureNode = NCombatRoom.Instance?.GetCreatureNode(player.Creature);
-        if (creatureNode?.Visuals is not NGuardianCreatureVisuals guardianVisuals) return;
-
-        guardianVisuals.IsDefensive = ActiveMode[player] is GuardianDefensiveMode;
-        guardianVisuals.OnAnimationTrigger("Idle");
     }
 }
 
@@ -115,7 +161,7 @@ public class GuardianRunModel() : CustomSingletonModel(HookType.Run)
     {
         if (options.Any(option => option.OptionId == GemRestSiteOption.Id)) return false;
 
-        var deck = player.GetDeck();
+        var deck = player.DeckPile;
         var hasGems = deck.Any(e => e is IGemCard);
         var hasSlots = deck.Any(e => e is IGemSocketCard { FreeSlots: > 0 });
         if (!hasSlots || !hasGems) return false;

@@ -1,10 +1,12 @@
 using BaseLib.Utils;
-using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
+using Collector.CollectorCode.Extensions;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Models.Cards;
 
 namespace Collector.CollectorCode.Cards.Common;
 
@@ -12,17 +14,23 @@ namespace Collector.CollectorCode.Cards.Common;
 public class AshenStrike : CollectorCardModel
 {
     // rename
-    public AshenStrike() : base(1, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
+    public AshenStrike() : base(1, CardType.Attack, CardRarity.Common, TargetType.AllEnemies)
     {
-        WithDamage(10, 3);
-        this.WithTip<Ember>();
+        WithTorchheadDamage(14, 2);
+        WithUpgradeChangingCardTip<Burn, Soot>();
+        WithTags(CardTag.Strike);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
+    
+    protected override bool ShouldGlowRedInternal => Owner.IsTorchheadMissing;
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        await DownfallCardCmd.GiveCard<Ember>(Owner, PileType.Hand);
+        await TorchheadCmd.TorchheadAttack(this, cardPlay).ExecuteIfPresent(ctx);
+        if (IsUpgraded)
+            await DownfallCardCmd.GiveCard<Soot>(Owner, PileType.Hand);
+        else 
+            await DownfallCardCmd.GiveCard<Burn>(Owner, PileType.Hand);
     }
 }

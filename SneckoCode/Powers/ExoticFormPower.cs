@@ -1,5 +1,4 @@
-﻿using BaseLib.Abstracts;
-using MegaCrit.Sts2.Core.Commands;
+﻿using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -9,19 +8,16 @@ using Snecko.SneckoCode.Core;
 
 namespace Snecko.SneckoCode.Powers;
 
-public class ExoticFormPower : SneckoPowerModel, IHasSecondAmount
+public class ExoticFormPower : SneckoPowerModel
 {
     private readonly HashSet<CardPoolModel> _uniqueColorsThisTurn = [];
-
-    public string GetSecondAmount()
-    {
-        return _uniqueColorsThisTurn.Count.ToString();
-    }
+    
+    public override int DisplayAmount => _uniqueColorsThisTurn.Count * Amount;
 
     public override Task BeforeCardPlayed(CardPlay cardPlay)
     {
         if (cardPlay.Card.Owner.Creature != Owner) return Task.CompletedTask;
-        if (_uniqueColorsThisTurn.Add(cardPlay.Card.Pool))
+        if (_uniqueColorsThisTurn.Add(cardPlay.Card.VisualCardPool))
             InvokeDisplayAmountChanged();
         return Task.CompletedTask;
     }

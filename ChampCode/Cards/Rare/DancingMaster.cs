@@ -15,8 +15,8 @@ public class DancingMaster : ChampCardModel
     {
         WithTip(ChampTip.Finisher);
         WithEnergy(1);
-        this.WithPower<DancingMasterPower>(1, false);
-        WithCostUpgradeBy(-1);
+        WithPower<DancingMasterPower>(1, false);
+        WithKeyword(CardKeyword.Ethereal, UpgradeType.Remove);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();

@@ -14,12 +14,12 @@ public class SharpHide : GuardianCardModel
     public SharpHide() : base(1, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
         WithPower<DexterityPower>(1);
-        this.WithPower<SharpHidePower>(2, 2, false);
-        this.WithTip<ThornsPower>();
+        WithPower<SharpHidePower>(2, 2, false);
+        WithTip<ThornsPower>();
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();
-    
+
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.ApplySelf<DexterityPower>(ctx, this);

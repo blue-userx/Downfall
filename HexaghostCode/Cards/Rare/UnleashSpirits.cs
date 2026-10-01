@@ -1,9 +1,8 @@
 using BaseLib.Cards.Variables;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Powers;
 using Hexaghost.HexaghostCode.Core;
-using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -14,9 +13,10 @@ namespace Hexaghost.HexaghostCode.Cards.Rare;
 [Pool(typeof(HexaghostCardPool))]
 public class UnleashSpirits : HexaghostCardModel
 {
-    public UnleashSpirits() : base(2, CardType.Attack, CardRarity.Rare, TargetType.RandomEnemy)
+    public UnleashSpirits() : base(1, CardType.Attack, CardRarity.Rare, TargetType.RandomEnemy)
     {
-        WithDamage(10, 3);
+        WithDamage(6, 2);
+        WithTip(CardKeyword.Ethereal);
         WithTip(CardKeyword.Exhaust);
         WithCalculatedVar("Repeat", 1, Calc);
     }
@@ -25,15 +25,17 @@ public class UnleashSpirits : HexaghostCardModel
 
     private static decimal Calc(CardModel card, Creature? target)
     {
-        var combatState = card.CombatState;
-        if (combatState == null) return 0;
-        return CombatManager.Instance.History.Entries.OfType<CardExhaustedEntry>().Count(e =>
-            e.RoundNumber == combatState.RoundNumber - 1 && e.Actor == card.Owner.Creature);
+        return card.Owner.ExhaustPile.Count(e => e.Keywords.Contains(CardKeyword.Ethereal));
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         var repeat = ((CustomCalculatedVar)DynamicVars["Repeat"]).Calculate(null);
-        await CommonActions.CardAttack(this, cardPlay, (int)repeat).Execute(ctx);
+        var scale = 0.8f;
+        await CommonActions.CardAttack(this, cardPlay, (int)repeat).BeforeDamage(async () =>
+        {
+            await SoulBurnPower.SoulburnEffect(cardPlay.Target, scale);
+            scale += 0.1f;
+        }).Execute(ctx);
     }
 }

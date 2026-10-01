@@ -5,7 +5,6 @@ using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Relics;
-using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 
 namespace Automaton.AutomatonCode.Relics;
@@ -18,7 +17,7 @@ public class Mallet : AutomatonRelicModel
         WithTip(AutomatonTip.Stash);
     }
 
-    protected override Task AfterCardChangedPiles(PlayerChoiceContext ctx, CardModel card, PileType oldPileType,
+    public override Task AfterCardChangedPiles(CardModel card, PileType oldPileType,
         AbstractModel? clonedBy)
     {
         if (card.Owner != Owner || card.Pile?.Type != StashPile.Stash) return Task.CompletedTask;

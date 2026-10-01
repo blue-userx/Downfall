@@ -22,10 +22,9 @@ public class SeventhEye : HexaghostCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var card = (await DownfallCardCmd.SelectFromCards(ctx, Owner.GetDraw(),
+        var card = (await DownfallCardSelectionCmd.SelectFromCombatPile(ctx, PileType.Draw.GetPile(Owner),
             DownfallCardSelectorPrefs.ToHandSelectionPrompt, this)).FirstOrDefault();
         if (card != null) await CardPileCmd.Add(card, PileType.Hand);
-        await HexaghostCmd.MoveToRandom(ctx, Owner, true);
         await HexaghostCmd.ReplaceCurrentWithRandom(Owner);
     }
 }

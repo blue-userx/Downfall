@@ -30,6 +30,6 @@ public class ImpeccablePecs : GremlinsRelicModel
         CardModel? cardSource)
     {
         if (power.Owner != Owner.Creature || power is not StrengthPower) return;
-        await DownfallCmd.GainTempHp(ctx, Owner.Creature, amount);
+        await GremlinsCmd.GainTempHp(ctx, Owner.Creature, amount);
     }
 }

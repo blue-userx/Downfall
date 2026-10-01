@@ -1,22 +1,23 @@
 ﻿using Collector.CollectorCode.Core;
-using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Collector.CollectorCode.Powers;
 
 public class FeelMyPainPower : CollectorPowerModel
 {
-    public override async Task AfterCardExhausted(PlayerChoiceContext ctx, CardModel card,
-        bool causedByEthereal)
+    public override async Task AfterCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        if (card.Owner.Creature != Owner) return;
-        var creature = CombatState.RunState.Rng.CombatTargets.NextItem(CombatState.HittableEnemies);
-        if (creature == null) return;
-        await DownfallCreatureCmd.Damage(ctx, creature, Amount,
-            ValueProp.Unblockable | ValueProp.Unpowered, Owner, null, null);
+        var card = cardPlay.Card;
+        if (card.Owner.Creature != Owner || !card.VisualCardPool.IsColorless) return;
         Flash();
+        await CreatureCmd.Damage(ctx,
+            CombatState.HittableEnemies,
+            Amount,
+            DamageProps.nonCardHpLoss,
+            Owner);
+  
     }
 }

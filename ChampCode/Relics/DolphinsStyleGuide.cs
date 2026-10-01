@@ -1,6 +1,5 @@
 using BaseLib.Utils;
 using Champ.ChampCode.Core;
-using Champ.ChampCode.CustomEnums;
 using Champ.ChampCode.Extensions;
 using Champ.ChampCode.Stance;
 using MegaCrit.Sts2.Core.Combat;
@@ -11,13 +10,15 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Champ.ChampCode.Relics;
+
 [Pool(typeof(ChampRelicPool))]
 public class DolphinsStyleGuide : ChampRelicModel
 {
     public DolphinsStyleGuide() : base(RelicRarity.Uncommon)
     {
-        WithTip(ChampTip.Stance);
+        // WithTip(ChampTip.Stance);
     }
+
     public override async Task BeforeSideTurnEnd(PlayerChoiceContext ctx, CombatSide side,
         IEnumerable<Creature> participants)
     {

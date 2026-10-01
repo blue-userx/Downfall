@@ -1,26 +1,22 @@
 ﻿using BaseLib.Abstracts;
+using Collector.CollectorCode.Core;
+using Collector.CollectorCode.Extensions;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.ValueProps;
 
 namespace SlimeBoss.SlimeBossCode.Core;
 
 public class SlimeBossModel() : CustomSingletonModel(HookType.Combat)
 {
-    public override Task BeforeHandDraw(Player player, PlayerChoiceContext ctx,
-        ICombatState combatState)
+    
+    public override async Task BeforeSideTurnEnd(PlayerChoiceContext ctx, CombatSide side, IEnumerable<Creature> participants)
     {
-        return SlimeBossCmd.CommandAll(ctx, player, ValueProp.Unpowered);
+        foreach (var player in participants.Where(e => e.IsPlayer).Select(e => e.Player).OfType<Player>())
+        {
+            await SlimeBossCmd.AutomaticCommandAll(ctx, player);
+        }
     }
-
-    public override Task BeforeCombatStart()
-    {
-        SlimeQueue.ResetAllSlots();
-
-        var state = CombatManager.Instance.DebugOnlyGetState();
-        if (state == null) return Task.CompletedTask;
-        foreach (var player in state.Players.Where(e => e.Character is SlimeBoss)) SlimeQueue.SetSlots(player, 3);
-        return Task.CompletedTask;
-    }
+    
 }

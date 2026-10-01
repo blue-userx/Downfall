@@ -10,20 +10,27 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace Automaton.AutomatonCode.Encode;
 
-public class SoulburnEncode : Encodable
+public class SoulburnEncode : ValueEncode
 {
+    public override string Id => "SOULBURN_ENCODE";
+    public override int Order => 7;
+
     public override TargetType Target => TargetType.AllEnemies;
     public override CardType Type => CardType.Skill;
+
+    public override DynamicVar FunctionDynamicVar => new PowerVar<SoulBurnPower>(0);
+
     public override Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
-        var creature = model.GetCreature();
+        var creature = model.Creature;
         var combatState = creature.CombatState;
         if (combatState == null) return Task.CompletedTask;
         return PowerCmd.Apply<SoulBurnPower>(ctx, combatState.HittableEnemies,
-            model.GetDynamicVars().Power<SoulBurnPower>().BaseValue, creature, model as CardModel);
+            model.DynamicVars.Power<SoulBurnPower>().BaseValue, creature, model as CardModel);
     }
-    
-    public override DynamicVar FunctionDynamicVar => new PowerVar<SoulBurnPower>(0);
-    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model) => [HoverTipFactory.FromPower<SoulBurnPower>()];
-    public override DynamicVar DynamicVar(AbstractModel model) => model.GetDynamicVars().Power<SoulBurnPower>();
+
+    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model)
+    {
+        return [HoverTipFactory.FromPower<SoulBurnPower>()];
+    }
 }

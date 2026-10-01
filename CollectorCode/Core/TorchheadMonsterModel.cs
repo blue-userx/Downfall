@@ -1,4 +1,5 @@
 ﻿using BaseLib.Abstracts;
+using Collector.CollectorCode.Intents;
 using MegaCrit.Sts2.Core.Animation;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Commands;
@@ -6,6 +7,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Collector.CollectorCode.Core;
@@ -26,7 +28,9 @@ public class TorchheadMonsterModel : CustomMonsterModel
 
     protected override MonsterMoveStateMachine GenerateMoveStateMachine()
     {
-        var initialState = new MoveState("NOTHING_MOVE", _ => Task.CompletedTask);
+        // Torchhead doesn't act through this state machine - the real attack fires from
+        // TorchheadPower.AfterSideTurnEnd. This state only exists to carry an intent to display.
+        var initialState = new MoveState("NOTHING_MOVE", _ => Task.CompletedTask, new TorchheadAttackIntent());
         initialState.FollowUpState = initialState;
         return new MonsterMoveStateMachine([initialState], initialState);
     }
@@ -37,10 +41,49 @@ public class TorchheadMonsterModel : CustomMonsterModel
     {
         if (target != Creature) return;
         await CreatureCmd.SetMaxHp(target, Creature.CurrentHp);
+
+        // Unlike Osty (whose MaxHp only ever grows), Torchhead's MaxHp is kept in sync with its
+        // remaining CurrentHp above, so its health bar always reads "full" - meaning MaxHp really
+        // does drop on every hit here, and the visual scale (driven by MaxHp) needs to follow it.
+        TorchheadCmd.RefreshTorchheadScale(target);
     }
 
-    public override CreatureAnimator? SetupCustomAnimationStates(MegaSprite controller)
+    public override Task AfterDeath(PlayerChoiceContext choiceContext, Creature creature, bool wasRemovalPrevented,
+        float deathAnimLength)
     {
-        return SetupAnimationState(controller, "idle");
+        // Torchhead is kept in combat instead of removed when it dies (see
+        // ShouldCreatureBeRemovedFromCombatAfterDeath, needed for revival), so the engine's own
+        // AnimDie(shouldRemove: true) intent-hide - which runs from here, via StartDeathAnim,
+        // before this hook fires - never runs for it. Hide it ourselves once death is final.
+        if (creature == Creature)
+            NCombatRoom.Instance?.GetCreatureNode(creature)?.AnimHideIntent();
+
+        return base.AfterDeath(choiceContext, creature, wasRemovalPrevented, deathAnimLength);
+    }
+
+    public override CreatureAnimator SetupCustomAnimationStates(MegaSprite controller)
+    {
+        var idleState = new AnimState("idle_loop", true);
+        var castState = new AnimState("cast");
+        var attackState = new AnimState("attack");
+        var hurtState = new AnimState("hurt");
+        var dieState = new AnimState("die");
+        //var deadLoopState = new AnimState("dead_loop", true);
+        var reviveState = new AnimState("revive");
+        idleState.AddBranch("Hit", hurtState);
+        castState.NextState = idleState;
+        castState.AddBranch("Hit", hurtState);
+        attackState.NextState = idleState;
+        attackState.AddBranch("Hit", hurtState);
+        hurtState.NextState = idleState;
+        hurtState.AddBranch("Hit", hurtState);
+        //dieState.NextState = deadLoopState;
+        reviveState.NextState = idleState;
+        var animator = new CreatureAnimator(idleState, controller);
+        animator.AddAnyState("Attack", attackState);
+        animator.AddAnyState("Cast", castState);
+        animator.AddAnyState("Dead", dieState);
+        animator.AddAnyState("Revive", reviveState);
+        return animator;
     }
 }

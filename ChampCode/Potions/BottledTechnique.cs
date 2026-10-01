@@ -1,8 +1,9 @@
-﻿using Champ.ChampCode.Core;
-using BaseLib.Utils;
+﻿using BaseLib.Utils;
+using Champ.ChampCode.Core;
 using Champ.ChampCode.CustomEnums;
 using Champ.ChampCode.Extensions;
 using Champ.ChampCode.Stance;
+using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -19,16 +20,18 @@ public class BottledTechnique : ChampPotionModel
     {
         WithRepeat(5);
         WithTip(ChampKeyword.TriggerSkillBonus);
-        WithTip(ChampTip.Stance);
+        // WithTip(ChampTip.Stance);
     }
 
+    protected override Artist Artist => Artist.Get<Fulgur>();
+    
     public override bool PassesCustomUsabilityCheck
     {
         get
         {
             if (!CombatManager.Instance.IsInProgress || Owner.RunState.CurrentRoom is not CombatRoom)
                 return false;
-            return Owner.ChampStance() is not ChampNoStance;
+            return Owner.ChampStance is not ChampNoStance;
         }
     }
 

@@ -1,7 +1,7 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Compatibility;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
@@ -15,7 +15,7 @@ public class EtherStep : HexaghostCardModel, IHasAfterlifeEffect
 {
     public EtherStep() : base(1, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
-        this.WithAfterlife();
+        WithAfterlife();
         WithDamage(10, 3);
         WithCards(1, 1);
         WithTip(CardKeyword.Exhaust);
@@ -23,18 +23,19 @@ public class EtherStep : HexaghostCardModel, IHasAfterlifeEffect
 
     protected override Artist Artist => Artist.Get<Inmo>();
 
-    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay? cardPlay, bool wasExhausted,
+        bool causedByEthereal)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        await HexaghostCmd.AfterlifeAttack(this, cardPlay).Execute(ctx);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await AfterlifeEffect(ctx, cardPlay);
+        await AfterlifeEffect(ctx, cardPlay, false, false);
 
         var prefs = new CardSelectorPrefs(CardSelectorPrefs.ExhaustSelectionPrompt, 1, 1);
         var exhausted = (await CardSelectCmd.FromHand(ctx, Owner, prefs, e => e != this, this)).FirstOrDefault();
-        if (exhausted != null) await CardCmd.Exhaust(ctx, exhausted);
+        if (exhausted != null) await CardCmdCompatibility.Exhaust(ctx, exhausted);
         await CommonActions.Draw(this, ctx);
     }
 }

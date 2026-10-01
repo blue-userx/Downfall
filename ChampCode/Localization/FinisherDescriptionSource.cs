@@ -2,6 +2,7 @@
 using Champ.ChampCode.Core;
 using Champ.ChampCode.CustomEnums;
 using Champ.ChampCode.Extensions;
+using Champ.ChampCode.Interfaces;
 using Champ.ChampCode.Stance;
 using Downfall.DownfallCode.Localization;
 using MegaCrit.Sts2.Core.Localization;
@@ -17,11 +18,12 @@ public class FinisherDescriptionSource : IExtraDescriptionSource
 
         var stance = card.IsCanonical || card._owner == null || card.CombatState == null
             ? ChampModelDb.ChampStance<ChampNoStance>()
-            : card.Owner.ChampStance();
+            : card.Owner.ChampStance;
 
         var locString = new LocString("champ_stances", $"{stance.GetType().GetPrefix()}{stance.Id.Entry}.finisher");
         stance.DynamicVars.AddTo(locString);
-
+        var affectsAll = card is IFinisherCard { Finisher.AffectsAllPlayers: true };
+        locString.Add("AffectsAllPlayers", affectsAll);
         yield return locString.GetFormattedText();
     }
 }

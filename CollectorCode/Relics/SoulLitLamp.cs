@@ -1,38 +1,37 @@
+using BaseLib.Extensions;
 using BaseLib.Utils;
-using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
-using Downfall.DownfallCode.Commands;
-using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Players;
+using Collector.CollectorCode.CustomEnums;
+using Collector.CollectorCode.Events;
+using Downfall.DownfallCode.Powers;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
 
 namespace Collector.CollectorCode.Relics;
 
 [Pool(typeof(CollectorRelicPool))]
-public class SoulLitLamp : CollectorRelicModel
+public class SoulLitLamp : CollectorRelicModel, IAfterCardPyred
 {
     public SoulLitLamp() : base(RelicRarity.Uncommon)
     {
-        WithTip<Ember>();
+        WithPower<SoulBurnPower>(3);
+        WithEnergy(2);
+        WithTip(CollectorKeyword.Pyre);
     }
 
-
-    public override bool HasUponPickupEffect => true;
-
-    public override Task AfterObtained()
+    public async Task AfterCardPyred(PlayerChoiceContext ctx, CardModel card, CardModel pyred)
     {
-        EssenceModel.AddEssence(Owner, 3);
-        return Task.CompletedTask;
-    }
-
-    public override async Task BeforeHandDraw(
-        Player player,
-        PlayerChoiceContext ctx,
-        ICombatState combatState)
-    {
-        if (player != Owner) return;
-        await DownfallCardCmd.GiveCard<Ember>(Owner, PileType.Hand);
+        if (pyred.EnergyCost.GetAmountToSpend() >= DynamicVars.Energy.BaseValue)
+        {
+            await PowerCmd.Apply<SoulBurnPower>(ctx,
+                card.CombatState!.HittableEnemies,
+                DynamicVars.Power<SoulBurnPower>().BaseValue,
+                Owner.Creature,
+                null,
+                false);
+            Flash();
+        }
     }
 }

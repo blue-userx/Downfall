@@ -1,31 +1,38 @@
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
-using Collector.CollectorCode.Extensions;
-using Collector.CollectorCode.Piles;
+using Collector.CollectorCode.CustomEnums;
+using Collector.CollectorCode.Interfaces;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
 
 namespace Collector.CollectorCode.Cards.Rare;
 
 [Pool(typeof(CollectorCardPool))]
-public class HoardersStrike : CollectorCardModel
+public class HoardersStrike : CollectorCardModel, IUsesPyredCards
 {
     public HoardersStrike() : base(2, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
-        WithDamage(16, 4);
+        WithKeyword(CollectorKeyword.Pyre);
+        WithTip(CollectorTip.Pyred);
+        WithDamage(20, 5);
         WithTags(CardTag.Strike);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
+    public IEnumerable<CardModel> PyredCards { get; set; } = [];
+    
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        var cards = Owner.GetCollectibles();
-        if (cards.Count == 0) return;
-        var card = cards[0];
-        await CardCmd.AutoPlay(ctx, card, cardPlay.Target);
+        var card = PyredCards.FirstOrDefault();
+        if (card == null || !card.VisualCardPool.IsColorless) return;
+        await CardCmd.AutoPlay(ctx, card, null);
     }
+    
+
+
 }

@@ -13,10 +13,10 @@ namespace Hexaghost.HexaghostCode.Cards.Uncommon;
 [Pool(typeof(HexaghostCardPool))]
 public class HeatCrush : HexaghostCardModel
 {
-    public HeatCrush() : base(3, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
+    public HeatCrush() : base(2, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        WithCalculatedDamage(12, Calc, ValueProp.Move, 6);
-        this.WithTip<SoulBurnPower>();
+        WithCalculatedDamage(8, Calc, DamageProps.card, 4);
+        WithTip<SoulBurnPower>();
     }
 
     protected override Artist Artist => Artist.Get<Claude27A>();
@@ -28,6 +28,7 @@ public class HeatCrush : HexaghostCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        await CommonActions.CardAttack(this, cardPlay).BeforeDamage(() =>
+            SoulBurnPower.SoulburnEffect(cardPlay.Target)).Execute(ctx);
     }
 }

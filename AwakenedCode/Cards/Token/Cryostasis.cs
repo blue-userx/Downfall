@@ -22,7 +22,9 @@ public class Cryostasis : AwakenedCardModel, ISpell, IOnAwaken, ICustomTypePlaqu
         WithKeywords(CardKeyword.Exhaust, CardKeyword.Retain);
         WithTags(AwakenedTag.Spell);
     }
-    
+
+    protected override IEnumerable<string> ExtraRunAssetPaths => [(this as ISpell).SpellIconPath];
+
     public LocString GetTypePlaqueName => new("gameplay_ui", "AWAKENED-SPELL");
 
     public Task OnAwaken(PlayerChoiceContext ctx, Player player)
@@ -34,6 +36,8 @@ public class Cryostasis : AwakenedCardModel, ISpell, IOnAwaken, ICustomTypePlaqu
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
+        SfxCmd.Play("event:/sfx/characters/awakened-awakened/cryostasis");
         await CommonActions.CardBlock(this, DynamicVars.Block, cardPlay);
     }
 }

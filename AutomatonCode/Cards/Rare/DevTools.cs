@@ -1,9 +1,9 @@
 ﻿using Automaton.AutomatonCode.Core;
 using Automaton.AutomatonCode.CustomEnums;
 using Automaton.AutomatonCode.Extensions;
-using Automaton.AutomatonCode.Vfx;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -19,27 +19,28 @@ public class DevTools : AutomatonCardModel
     public DevTools() : base(1, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
         WithKeywords(CardKeyword.Exhaust);
-        WithTip(AutomatonTip.Encode);
+        WithTip(AutomatonKeyword.Encode);
         WithCostUpgradeBy(-1);
         WithCalculatedVar("Dev", 0, Calc);
+        WithKeyword(CardKeyword.Retain);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
     private static decimal Calc(CardModel card, Creature? arg2)
     {
-        return card.Owner.GetEncode().Count;
+        return card.Owner.EncodePile.Count;
     }
 
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         var count = ((CalculatedVar)DynamicVars["Dev"]).Calculate(null);
-        var cards = Owner.GetEncode().ToList();
+        var cards = Owner.EncodePile.ToList();
         foreach (var card in cards)
-            await CardCmd.Exhaust(ctx, card);
+            await CardCmdCompatibility.Exhaust(ctx, card);
         await PlayerCmd.GainEnergy(count, Owner);
         await CardPileCmd.Draw(ctx, count, Owner);
-        NSequenceDisplay.Refresh(Owner);
+        // NSequenceDisplay.Refresh(Owner);
     }
 }

@@ -1,5 +1,6 @@
 using BaseLib.Utils;
 using Champ.ChampCode.Core;
+using Champ.ChampCode.CustomEnums;
 using Champ.ChampCode.Extensions;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -10,8 +11,15 @@ using MegaCrit.Sts2.Core.Models;
 namespace Champ.ChampCode.Relics;
 
 [Pool(typeof(ChampRelicPool))]
-public class ChampionsCrown() : ChampRelicModel(RelicRarity.Starter)
+public class ChampionsCrown : ChampRelicModel
 {
+    public ChampionsCrown() : base(RelicRarity.Starter)
+    {
+        // WithTip(ChampTip.Stance);
+        WithTip(ChampKeyword.TriggerSkillBonus);
+        WithCards(1);
+    }
+
     public override RelicModel GetUpgradeReplacement()
     {
         return ModelDb.Relic<VictoriousCrown>();
@@ -26,8 +34,14 @@ public class ChampionsCrown() : ChampRelicModel(RelicRarity.Starter)
         if (player != Owner || Owner.PlayerCombatState is not { TurnNumber: 1 }) return;
         Flash();
         await ChampCmd.EnterDifferentStance(ctx, player);
-        var stance = Owner.ChampStance();
+        var stance = Owner.ChampStance;
         await stance.SkillBonus(ctx);
-        await stance.SkillBonus(ctx);
+    }
+
+    // Extra card is part of the turn-start hand draw, so it isn't blocked by effects like Fiddle.
+    public override decimal ModifyHandDraw(Player player, decimal count)
+    {
+        if (player != Owner || Owner.PlayerCombatState is not { TurnNumber: 1 }) return count;
+        return count + DynamicVars.Cards.IntValue;
     }
 }

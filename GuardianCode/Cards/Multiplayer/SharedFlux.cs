@@ -2,6 +2,7 @@
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.CustomEnums;
 using Guardian.GuardianCode.Core;
+using Guardian.GuardianCode.CustomEnums;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -12,11 +13,12 @@ namespace Guardian.GuardianCode.Cards.Multiplayer;
 [Pool(typeof(GuardianCardPool))]
 public class SharedFlux : GuardianCardModel
 {
-    public SharedFlux() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.AnyAlly)
+    public SharedFlux() : base(0, CardType.Skill, CardRarity.Uncommon, TargetType.AnyAlly)
     {
-        WithCostUpgradeBy(-1);
-        WithKeyword(CardKeyword.Exhaust);
+        WithKeyword(CardKeyword.Exhaust, UpgradeType.Remove);
+        WithTip(GuardianTip.Stasis);
     }
+
     public override CardMultiplayerConstraint MultiplayerConstraint => CardMultiplayerConstraint.MultiplayerOnly;
 
     protected override Artist Artist => Artist.Get<AlexMdle>();

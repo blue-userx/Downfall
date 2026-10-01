@@ -1,21 +1,12 @@
 ﻿using Champ.ChampCode.Core;
-using Champ.ChampCode.Extensions;
-using Champ.ChampCode.Stance;
-using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Commands;
-using MegaCrit.Sts2.Core.Entities.Creatures;
-using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.ValueProps;
+using Champ.ChampCode.Events;
 
 namespace Champ.ChampCode.Powers;
 
-public class ProtectiveAuraPower : ChampPowerModel
+public class ProtectiveAuraPower : ChampPowerModel, IModifyDefensiveFinisherBonus
 {
-    public override async Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side,
-        IEnumerable<Creature> participants)
+    public int ModifyDefensiveFinisherBonus(ChampStanceModel stanceModel, int baseAmount)
     {
-        if (side != Owner.Side || Owner.Player == null || !Owner.Player.IsInChampStance<ChampNoStance>()) return;
-        await CreatureCmd.GainBlock(Owner, Amount, ValueProp.Move | ValueProp.Unpowered, null);
-        Flash();
+        return stanceModel.Owner.Creature == Owner ? baseAmount + Amount : baseAmount;
     }
 }

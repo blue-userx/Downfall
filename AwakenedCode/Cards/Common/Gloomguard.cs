@@ -15,7 +15,7 @@ public class Gloomguard : AwakenedCardModel
     {
         WithBlock(8, 3);
         WithEnergyTip();
-        this.WithTip<Void>();
+        WithTip<Void>();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
@@ -31,7 +31,7 @@ public class Gloomguard : AwakenedCardModel
 
     private bool HasVoidInHand()
     {
-        return Owner.GetHand().Any(e => e.Id == ModelDb.Card<Void>().Id);
+        return Owner.Hand.Any(e => e.Id == ModelDb.Card<Void>().Id);
     }
 
     public override bool TryModifyEnergyCostInCombat(CardModel card, decimal originalCost, out decimal modifiedCost)

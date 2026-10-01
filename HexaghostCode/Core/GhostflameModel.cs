@@ -1,8 +1,12 @@
+using System.Text;
 using BaseLib.Abstracts;
 using Downfall.DownfallCode.Vfx;
+using Hexaghost.HexaghostCode.DynamicVars;
 using Hexaghost.HexaghostCode.Events;
+using Hexaghost.HexaghostCode.Interfaces;
 using Hexaghost.HexaghostCode.Vfx;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -12,54 +16,84 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.TestSupport;
 using Vector2 = Godot.Vector2;
 
 namespace Hexaghost.HexaghostCode.Core;
 
 // GhostflameModel.cs
-public abstract class GhostflameModel : AbstractModel, ICustomModel
+public abstract class GhostflameModel : AbstractModel, ICustomModel, ICustomAbstractModel
 {
-    private GhostflameModel? _canonicalInstance;
-    private Player? _owner;
+    Creature ICustomAbstractModel.Creature => Owner.Creature;
+    Player ICustomAbstractModel.Player => Owner;
+
+
+    private DynamicVarSet? _dynamicVars;
     public override bool ShouldReceiveCombatHooks => true;
     public abstract AbstractIntent Intent { get; }
-    public bool IsActive => HexaghostCmd.GetCurrentFlame(Owner) == this;
+    protected bool IsActive => HexaghostCmd.GetCurrentFlame(Owner) == this;
     public bool IsIgnited { get; set; }
-    private int IgnitionProgress { get; set; }
+    protected int IgnitionProgress { get; set; }
     protected abstract int IgnitionRequirement { get; }
     public LocString Title => new("ghostflames", Id.Entry + ".title");
-    public LocString Description => new("ghostflames", Id.Entry + ".description");
+    private LocString Description => new("ghostflames", Id.Entry + ".description");
     public abstract FireColor FireColor { get; }
-    protected ICombatState CombatState => Owner.Creature.CombatState!;
+    private ICombatState CombatState => Owner.Creature.CombatState!;
+    public virtual bool IsOffclass => false;
 
-    public HoverTip HoverTip
+    public DynamicVarSet DynamicVars
     {
         get
         {
-            var tip = new HoverTip(Title, Description);
-            tip.SetCanonicalModel(CanonicalInstance);
-            return tip;
+            if (_dynamicVars != null)
+                return _dynamicVars;
+            _dynamicVars = new DynamicVarSet(CanonicalVars);
+            _dynamicVars.InitializeWithOwner(this);
+            return _dynamicVars;
         }
     }
+
+    protected virtual IEnumerable<DynamicVar> CanonicalVars => [];
+
+
+    private HoverTip HoverTip => ToHoverTip(GetFormattedText());
+
+
+    protected virtual IEnumerable<IHoverTip> ExtraHoverTips => [];
+
+
+    public IEnumerable<IHoverTip> HoverTips
+    {
+        get
+        {
+            var hoverTips = new List<IHoverTip> { HoverTip };
+            hoverTips.AddRange(ExtraHoverTips);
+            return hoverTips.Distinct();
+        }
+    }
+
+    protected IRunState RunState => Owner.RunState;
 
     protected int Intensity => HexaghostHook.ModifyGhostflameEffectAdditive(Owner.Creature.CombatState!, Owner, this);
 
     private int FlameIndex => Array.IndexOf(HexaghostCmd.GetWheel(Owner), this);
 
-    protected Player Owner
+    public Player Owner
     {
         get
         {
             AssertMutable();
-            return _owner!;
+            return field!;
         }
         private set
         {
             AssertMutable();
-            _owner = _owner == null || _owner == value
+            field = field == null || field == value
                 ? value
                 : throw new InvalidOperationException($"Cannot move ghostflame {Id.Entry} from one owner to another");
         }
@@ -67,17 +101,51 @@ public abstract class GhostflameModel : AbstractModel, ICustomModel
 
     private GhostflameModel CanonicalInstance
     {
-        get => !IsMutable ? this : _canonicalInstance!;
+        get => !IsMutable ? this : field!;
         set
         {
             AssertMutable();
-            _canonicalInstance = value;
+            field = value;
         }
+    }
+
+    private string GetFormattedText()
+    {
+        var stringBuilder = new StringBuilder();
+        var locString = Description;
+        var prefix = Owner.Character.CardPool.EnergyColorName;
+        locString.Add("energyPrefix", prefix);
+        UpdateDynamicVarPreview();
+        DynamicVars.AddTo(locString);
+        var formatted = locString.GetFormattedText();
+        if (!formatted.Equals(""))
+            stringBuilder.Append(formatted);
+        return stringBuilder.ToString();
+    }
+
+    protected override void DeepCloneFields()
+    {
+        _dynamicVars = DynamicVars.Clone(this);
+    }
+
+    private HoverTip ToHoverTip(string description)
+    {
+        return new HoverTip(Title, description)
+        {
+            Id = Id.ToString(),
+            IsSmart = true
+        };
+    }
+
+    private void UpdateDynamicVarPreview()
+    {
+        foreach (var dynamicVar in DynamicVars.Values.OfType<GhostflameVar>().ToList())
+            dynamicVar.UpdateGhostflamePreview(this, true);
     }
 
     protected int Repeat(GhostflameRepeatType repeatType)
     {
-        return HexaghostHook.ModifyGhostflameRepeatAdditive(Owner.Creature.CombatState!, Owner, repeatType, this);
+        return 1 + HexaghostHook.ModifyGhostflameRepeatAdditive(Owner.Creature.CombatState!, Owner, repeatType, this);
     }
 
 
@@ -89,7 +157,7 @@ public abstract class GhostflameModel : AbstractModel, ICustomModel
 
     protected bool TryProgress(int amount = 1)
     {
-        if (IsIgnited) return false;
+        if (IsIgnited || !HexaghostCmd.IsGhostwheelActivated(Owner)) return false;
         IgnitionProgress += amount;
         UpdateVisuals();
         return IgnitionProgress >= IgnitionRequirement;
@@ -170,6 +238,51 @@ public abstract class GhostflameModel : AbstractModel, ICustomModel
     {
         return Task.CompletedTask;
     }
+
+
+    protected bool TryBeginIgnite(string sfx = "event:/sfx/characters/attack_fire")
+    {
+        if (Owner.Creature.CombatState == null) return false;
+        if (TestMode.IsOff) SfxCmd.Play(sfx);
+        return true;
+    }
+
+    protected async Task RepeatOnTargets(PlayerChoiceContext ctx, int count, GhostflameRepeatType repeatType,
+        Func<IReadOnlyList<Creature>, Task> action)
+    {
+        var hitAll = HexaghostHook.ShouldGhostflameTargetAll(CombatState, this, repeatType, out var matches);
+        await HexaghostHook.AfterShouldGhostflameTargetedAll(CombatState, ctx, this, matches);
+        for (var i = 0; i < count; i++)
+        {
+            IReadOnlyList<Creature> targets;
+            if (hitAll)
+            {
+                targets = CombatState.HittableEnemies;
+            }
+            else
+            {
+                var target = RunState.Rng.CombatTargets.NextItem(CombatState.HittableEnemies);
+                targets = target == null ? [] : [target];
+            }
+
+            foreach (var creature in targets)
+                SpawnVfx(creature);
+            await action(targets);
+        }
+    }
+
+    protected async Task TriggerOnCardType(PlayerChoiceContext ctx, CardPlay cardPlay, CardType type,
+        Func<CardModel, bool>? cond = null)
+    {
+        if (!IsActive || cardPlay.Card.Owner != Owner || cardPlay.Card is IDoesNotTriggerGhostflame ||
+            (cond != null && !cond.Invoke(cardPlay.Card))) return;
+        var shouldCount = HexaghostHook.GhostflameConditionOverwrites(CombatState, Owner, this, cardPlay);
+        if (cardPlay.Card.Type != type && !shouldCount) return;
+        if (!TryProgress()) return;
+        await Ignite(ctx);
+    }
+
+    public abstract bool AboutToIgnite(CardModel card);
 }
 
 public enum GhostflameRepeatType

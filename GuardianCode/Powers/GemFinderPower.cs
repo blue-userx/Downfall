@@ -1,6 +1,7 @@
+using Guardian.GuardianCode.Cards.Abstract;
 using Guardian.GuardianCode.Core;
 using Guardian.GuardianCode.CustomEnums;
-using Guardian.GuardianCode.Interfaces;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -8,18 +9,17 @@ namespace Guardian.GuardianCode.Powers;
 
 public class GemFinderPower : GuardianPowerModel
 {
-
     public GemFinderPower()
     {
         WithTip(GuardianKeyword.Gem);
-        WithTip(GuardianTip.Brace);
+        WithTip(GuardianTip.Socket);
     }
-    
+
     public override async Task AfterCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         var card = cardPlay.Card;
-        if (card.Owner.Creature != Owner || card is not IGemSocketCard gemCard || gemCard.GemCount == 0) return;
-        await GuardianCmd.Brace(ctx, card.Owner, Amount);
+        if (card.Owner.Creature != Owner || card is not IGemCard) return;
+        await CardPileCmd.Draw(ctx, Amount, card.Owner);
     }
 
 

@@ -14,15 +14,17 @@ public class ThermalTransfer : HexaghostCardModel
     {
         WithDamage(7, 2);
         WithBlock(6, 2);
-        this.WithTip<SoulBurnPower>();
+        WithTip<SoulBurnPower>();
     }
 
     protected override Artist Artist => Artist.Get<CartesianCanvas>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        if (cardPlay.Target == null) return;
+        var hasSoulburn = cardPlay.Target.HasPower<SoulBurnPower>();
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        if (cardPlay.Target == null || cardPlay.Target.IsDead || !cardPlay.Target.HasPower<SoulBurnPower>()) return;
+        if (!hasSoulburn) return;
         await CommonActions.CardBlock(this, cardPlay);
     }
 }

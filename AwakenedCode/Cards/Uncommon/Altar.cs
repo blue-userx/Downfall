@@ -1,9 +1,8 @@
 using Awakened.AwakenedCode.Core;
-using Awakened.AwakenedCode.Extensions;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.CardSelection;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -16,7 +15,7 @@ public class Altar : AwakenedCardModel
     {
         WithBlock(5, 3);
         WithTip(CardKeyword.Exhaust);
-        this.WithConjure();
+        WithConjure();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
@@ -26,7 +25,7 @@ public class Altar : AwakenedCardModel
         await CommonActions.CardBlock(this, cardPlay);
         var card = await CommonActions.SelectSingleCard(this, CardSelectorPrefs.ExhaustSelectionPrompt, ctx,
             PileType.Hand);
-        if (card != null) await CardCmd.Exhaust(ctx, card);
+        if (card != null) await CardCmdCompatibility.Exhaust(ctx, card);
         await AwakenedCmd.Conjure(Owner);
     }
 }

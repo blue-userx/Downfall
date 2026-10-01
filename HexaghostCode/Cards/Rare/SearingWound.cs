@@ -12,10 +12,10 @@ namespace Hexaghost.HexaghostCode.Cards.Rare;
 [Pool(typeof(HexaghostCardPool))]
 public class SearingWound : HexaghostCardModel
 {
-    public SearingWound() : base(1, CardType.Skill, CardRarity.Rare, TargetType.AllAllies)
+    public SearingWound() : base(1, CardType.Skill, CardRarity.Rare, TargetType.AllEnemies)
     {
-        WithKeyword(CardKeyword.Retain, UpgradeType.Add);
-        WithKeyword(CardKeyword.Exhaust);
+        WithKeyword(CardKeyword.Exhaust, UpgradeType.Remove);
+        WithTip<SoulBurnPower>();
     }
 
     protected override Artist Artist => Artist.Get<Inmo>();
@@ -23,11 +23,15 @@ public class SearingWound : HexaghostCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         if (CombatState == null) return;
+        var scale = 1f;
         foreach (var enemy in CombatState.HittableEnemies)
         {
             var amount = enemy.GetPowerAmount<SoulBurnPower>();
-            await DownfallCreatureCmd.Damage(ctx, enemy, amount,
-                ValueProp.Move | ValueProp.Unpowered | ValueProp.Unblockable,
+            if (amount <= 0) continue;
+            await SoulBurnPower.SoulburnEffect(enemy, scale);
+            scale *= 0.9f;
+            await CompatibilityCreatureCmd.Damage(ctx, enemy, amount,
+                DamageProps.cardHpLoss,
                 Owner.Creature, this, cardPlay);
         }
     }

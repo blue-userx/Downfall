@@ -1,0 +1,21 @@
+using Hermit.HermitCode.Core;
+using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Powers;
+
+namespace Hermit.HermitCode.Powers;
+
+public sealed class NoHoldsBarredPower : HermitPowerModel
+{
+    public NoHoldsBarredPower() : base(PowerType.Debuff)
+    {
+        WithEnergyTip();
+    }
+
+    public override async Task AfterEnergyReset(Player player)
+    {
+        if (player != Owner.Player) return;
+        await PlayerCmd.LoseEnergy(Amount, player);
+        await PowerCmd.Remove(this);
+    }
+}

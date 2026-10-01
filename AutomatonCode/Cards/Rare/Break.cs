@@ -14,7 +14,7 @@ public class Break : AutomatonCardModel
     public Break() : base(1, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
         WithDamage(20, 5);
-        this.WithTip<Error>();
+        WithTip<Error>();
     }
 
     protected override Artist Artist => Artist.Get<CartesianCanvas>();
@@ -28,6 +28,6 @@ public class Break : AutomatonCardModel
         await DownfallCardCmd.GiveCard<Error>(Owner, PileType.Hand);
         await DownfallCardCmd.GiveCard<Error>(Owner, PileType.Draw, CardPilePosition.Random);
         await DownfallCardCmd.GiveCard<Error>(Owner, PileType.Discard);
-        await StashCmd.Stash<Error>(Owner);
+        await StashCmd.Stash<Error>(ctx, Owner);
     }
 }

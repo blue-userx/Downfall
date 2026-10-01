@@ -1,8 +1,7 @@
 using Awakened.AwakenedCode.Core;
-using Awakened.AwakenedCode.Extensions;
-using Awakened.AwakenedCode.Powers;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Awakened.AwakenedCode.Powers;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -15,16 +14,15 @@ public class SingularityShield : AwakenedCardModel
     public SingularityShield() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
         WithBlock(8, 2);
-        this.WithPower<BlockNextTurnPower>(8, 2, false);
-        this.WithDrained(1);
+        WithDrained(1);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardBlock(this, cardPlay);
-        await CommonActions.ApplySelf<BlockNextTurnPower>(ctx, this);
+        var block = await CommonActions.CardBlock(this, cardPlay);
+        await CommonActions.ApplySelf<BlockNextTurnPower>(ctx, this, block);
         await CommonActions.ApplySelf<DrainedPower>(ctx, this);
     }
 }

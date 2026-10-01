@@ -4,8 +4,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
-using SlimeBoss.SlimeBossCode.Core;
-using SlimeBoss.SlimeBossCode.CustomEnums;
 using SlimeBoss.SlimeBossCode.Slimes;
 
 namespace SlimeBoss.SlimeBossCode.Cards.Token;
@@ -20,18 +18,21 @@ public abstract class SlimeCard<T>
     {
         WithTips(_ => [SlimeModel.SlimeTip]);
     }
-    
-    
+
+    public override bool CanBeGeneratedByModifiers => false;
+    public override bool CanBeGeneratedInCombat => false;
+
     protected override bool IsPlayable => false;
     public override string Title => SlimeModel.Title.GetFormattedText();
-    public SlimeModel SlimeModel => ModelDb.Get<T>();
-    
+
     public LocString ModifyDescription(LocString oldLocString)
     {
         var description = new LocString("cards", "SLIMEBOSS-SLIME_CARD.description");
         description.Add("Slime", SlimeModel.Title.GetFormattedText());
         return description;
     }
+
+    public SlimeModel SlimeModel => ModelDb.GetById<T>(ModelDb.GetId<T>());
 }
 
 public interface ISlimeCard
@@ -39,43 +40,55 @@ public interface ISlimeCard
     SlimeModel SlimeModel { get; }
 }
 
-
 #pragma warning disable
 
-// Normal Slimes
-public class SlimeCardLeeching : SlimeCard<LeechingSlime>;
-
-public class SlimeCardMire : SlimeCard<MireSlime>;
+// Uncommon Slimes
 
 public class SlimeCardBruiser : SlimeCard<BruiserSlime>;
-
+public class SlimeCardMuscle : SlimeCard<MuscleSlime>;
+public class SlimeCardTaunting : SlimeCard<TauntingSlime>;
+public class SlimeCardPsychic : SlimeCard<PsychicSlime>;
+public class SlimeCardLeeching : SlimeCard<LeechingSlime>;
+public class SlimeCardSpike : SlimeCard<SpikeSlime>;
+public class SlimeCardCultist : SlimeCard<CultistSlime>;
 public class SlimeCardGuerilla : SlimeCard<GuerillaSlime>;
 
-// Specialist Slimes
-public class SlimeCardAncient : SlimeCard<AncientSlime>;
+// rare Slimes
+public class SlimeCardMassive : SlimeCard<MassiveSlime>;
+public class SlimeCardEvolution : SlimeCard<EvolutionSlime>;
+public class SlimeCardRoyal : SlimeCard<RoyalSlime>;
+public class SlimeCardDarkling : SlimeCard<DarklingSlime>;
 
-public class SlimeCardBronze : SlimeCard<BronzeSlime>;
-
-public class SlimeCardCultist : SlimeCard<CultistSlime>;
-
-public class SlimeCardGhostflame : SlimeCard<GhostflameSlime>;
-
-public class SlimeCardInsulting : SlimeCard<InsultingSlime>;
-
-public class SlimeCardSpiky : SlimeCard<SpikySlime>;
-
-public class SlimeCardTime : SlimeCard<TimeSlime>;
-
-public class SlimeCardTorchhead : SlimeCard<TorchheadSlime>;
 
 // Unused Slimes
+
+/*
+[Obsolete]
+public class SlimeCardMire() : SlimeCard<MireSlime>(false, false);
+
+[Obsolete]
+public class SlimeCardGhostflame() : SlimeCard<GhostflameSlime>(false, false);
+
+[Obsolete]
+public class SlimeCardAncient() : SlimeCard<AncientSlime>(false, false);
+
+[Obsolete]
+public class SlimeCardBronze() : SlimeCard<BronzeSlime>(false, false);
+
+[Obsolete]
+public class SlimeCardTime() : SlimeCard<TimeSlime>(false, false);
+
+[Obsolete]
+public class SlimeCardInsulting() : SlimeCard<InsultingSlime>(false, false);
+
+[Obsolete]
+public class SlimeCardTorchhead() : SlimeCard<TorchheadSlime>(false, false);
+
 [Obsolete]
 public class SlimeCardGreed() : SlimeCard<GreedSlime>(false, false);
 
 [Obsolete]
-public class SlimeCardDarkling() : SlimeCard<DarklingSlime>(false, false);
-
-[Obsolete]
 public class SlimeCardScrap() : SlimeCard<ScrapSlime>(false, false);
+*/
 
 #pragma warning restore

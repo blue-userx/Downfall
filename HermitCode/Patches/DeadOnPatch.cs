@@ -1,18 +1,49 @@
-﻿using HarmonyLib;
+﻿using System.Reflection;
+using BaseLib.Utils;
+using HarmonyLib;
 using Hermit.HermitCode.Core;
 using MegaCrit.Sts2.Core.Models;
 
 namespace Hermit.HermitCode.Patches;
 
-[HarmonyPatch(typeof(CardModel), nameof(CardModel.OnPlayWrapper))]
+/// <summary>
+///     Snapshots a card's Dead On / curse-adjacency status the moment it starts playing,
+///     while it is still sitting in the hand. Everything downstream (the after-play handler,
+///     Combo, Headshot, ...) reads the snapshot because by then the card is in the Play pile
+///     and its hand position is gone.
+///     <para>
+///         Patched on the async state machine's <c>MoveNext</c>, not on
+///         <c>CardModel.OnPlayWrapper</c> itself: the kickoff stub of an async method is tiny
+///         and gets inlined into callers (e.g. <c>CardCmd.AutoPlay</c>), which silently skips a
+///         Harmony prefix placed on it.
+///     </para>
+/// </summary>
+[HarmonyPatch]
 internal static class DeadOnPatch
 {
-    internal static bool LastWasDeadOn;
-    internal static CardModel? LastPlayed;
+    private static readonly Type StateMachineType = typeof(CardModel)
+        .GetNestedTypes(AccessTools.all)
+        .FirstOrDefault(t => t.Name.Contains("OnPlayWrapper"))
+        ?? throw new MissingMemberException("CardModel.OnPlayWrapper state machine not found");
 
-    private static void Prefix(CardModel __instance)
+    private static readonly FieldInfo StateField = AccessTools.Field(StateMachineType, "<>1__state");
+    private static readonly FieldInfo ThisField = AccessTools.Field(StateMachineType, "<>4__this");
+
+    // Keyed per card so simultaneous plays (multiplayer) can't overwrite each other's snapshot.
+    private static readonly SpireField<CardModel, PlayStartHandStatus> Status = new(() => PlayStartHandStatus.None);
+
+    internal static PlayStartHandStatus StatusOf(CardModel card) => Status[card];
+
+    private static MethodBase TargetMethod() => AccessTools.Method(StateMachineType, "MoveNext");
+
+    private static void Prefix(object __instance)
     {
-        LastPlayed = __instance;
-        LastWasDeadOn = HermitCmd.IsDeadOnInCurrentHandState(__instance);
+        // MoveNext runs once per await; only the first step (state -1) still has the card in hand.
+        if ((int)StateField.GetValue(__instance)! != -1) return;
+        var card = (CardModel)ThisField.GetValue(__instance)!;
+        // Hand-position only: IShouldTriggerDeadOn sources are re-checked live per replay
+        // instance instead (see HermitCmd.IsDeadOn), since their answer can change
+        // across a single card's own replay instances while a stale snapshot here cannot.
+        Status[card] = HermitCmd.CaptureHandStatus(card);
     }
 }

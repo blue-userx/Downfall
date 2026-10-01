@@ -1,6 +1,5 @@
 using BaseLib.Utils;
 using Champ.ChampCode.Core;
-using Champ.ChampCode.Extensions;
 using Champ.ChampCode.Powers;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -13,8 +12,8 @@ public class DefensiveShout : ChampCardModel
 {
     public DefensiveShout() : base(0, CardType.Skill, CardRarity.Basic, TargetType.Self)
     {
-        WithPower<CounterPower>(3, 3);
-        this.WithEnterDefensive();
+        WithPower<CounterPower>(2, 2);
+        WithEnterDefensive();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();

@@ -1,10 +1,15 @@
 ﻿using Champ.ChampCode.Cards.Basic;
 using Champ.ChampCode.Relics;
+using Champ.ChampCode.Stance;
 using Downfall.DownfallCode.Abstract;
-using Downfall.DownfallCode.Utils.Sound;
+using Downfall.DownfallCode.Compatibility;
+using Downfall.DownfallCode.Config;
 using Godot;
+using MegaCrit.Sts2.Core.Animation;
+using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Characters;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Entities.Relics;
@@ -17,7 +22,7 @@ public class Champ : DownfallCharacterModel
 #pragma warning restore STS001
 {
     private static readonly Color Color = new(0x5E594FFF);
-    public override Color EnergyLabelOutlineColor  => new(0x464203FF);
+    public override Color EnergyLabelOutlineColor => new(0x464203FF);
     public override string CharId => "Champ";
     public override string ModId => ChampMainFile.ModId;
     public override Color NameColor => Color;
@@ -27,7 +32,10 @@ public class Champ : DownfallCharacterModel
     public override float CardColorS => 0.5f;
     public override float CardColorV => 1.2f;
     public override Color MapDrawingColor => Color;
-    
+
+    public override bool HideFromVanillaCharacterSelect => DownfallConfig.HideChamp;
+    public override bool HideInCompendium => DownfallConfig.HideChamp;
+
     public override CharacterGender Gender => CharacterGender.Masculine;
     protected override CharacterModel? UnlocksAfterRunAs => null;
     public override int StartingHp => 80;
@@ -42,6 +50,7 @@ public class Champ : DownfallCharacterModel
         ModelDb.Card<DefendChamp>(),
         ModelDb.Card<DefendChamp>(),
         ModelDb.Card<DefendChamp>(),
+        ModelDb.Card<DefendChamp>(),
         ModelDb.Card<BerserkersShout>(),
         ModelDb.Card<DefensiveShout>(),
         ModelDb.Card<Execute>()
@@ -53,7 +62,7 @@ public class Champ : DownfallCharacterModel
         ModelDb.Relic<ChampionsCrown>()
     ];
 
-    public override float AttackAnimDelay => 0.15f;
+    public override float AttackAnimDelay => 0.2f;
 
     public override float CastAnimDelay => 0.25f;
 
@@ -61,83 +70,86 @@ public class Champ : DownfallCharacterModel
     public override PotionPoolModel PotionPool => ModelDb.PotionPool<ChampPotionPool>();
     public override RelicPoolModel RelicPool => ModelDb.RelicPool<ChampRelicPool>();
 
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Champ/audio/character_select/STS_VO_TheChamp_3a.ogg", 1, 0.1f, 1, 10),
-        new ModSoundEntry("res://Champ/audio/character_select/STS_VO_TheChamp_3b.ogg", 1, 0.1f, 1, 10)
-    );
-
-    /*
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
+    public static string GetJumpAnimIfApplicable(CharacterModel character)
     {
-        var idleNone = new AnimState("Idle", true);
-        var idleBerserker = new AnimState("IdleBerserker", true);
-        var idleDefensive = new AnimState("IdleDefensive", true);
-        var idleUltimate = new AnimState("IdleUltimate", true);
-        var idleGladiator = new AnimState("IdleGladiator", true);
+        return character is not Champ ? "Attack" : "jumpAttack";
+    }
 
-        var hitNone = new AnimState("Hit");
-        var hitBerserker = new AnimState("HitBerserker");
-        var hitDefensive = new AnimState("HitDefensive");
-        var hitUltimate = new AnimState("IdleUltimate");
-        var hitGladiator = new AnimState("HitGladiator");
+    public static float GetJumpAttackDelayIfApplicable(CharacterModel character)
+    {
+        return character is not Champ ? character.AttackAnimDelay : 0.5f;
+    }
 
-        hitNone.NextState = idleNone;
-        hitBerserker.NextState = idleBerserker;
-        hitDefensive.NextState = idleDefensive;
-        hitUltimate.NextState = idleUltimate;
-        hitGladiator.NextState = idleGladiator;
+    
+    protected override List<(AnimState, string)> AnimationStates =>
+        base.AnimationStates.Concat([
+            (new AnimState("attack_jump"),  "jumpAttack")
+        ]).ToList();
+    
+    private Func<Creature, ChampStanceModel?> Stance => creature => creature.Player == null ? null : ChampModel.GetStanceModel(creature.Player);
 
-        var attackNone = new AnimState("Attack");
-        var attackBerserker = new AnimState("Attack");
-        var attackDefensive = new AnimState("Attack");
-        var attackUltimate = new AnimState("Attack");
-        var attackGladiator = new AnimState("Attack");
+    
+    public override CreatureAnimator? SetupCustomAnimationStates(MegaSprite controller)
+    {
+        var creature = controller.GetOwningCreature();
+        if (creature == null)
+            return null;
 
-        attackNone.NextState = idleNone;
-        attackBerserker.NextState = idleBerserker;
-        attackDefensive.NextState = idleDefensive;
-        attackUltimate.NextState = idleUltimate;
-        attackGladiator.NextState = idleGladiator;
+        var idle = new AnimState("idle_loop", true);
+        var idleBerserker = new AnimState("idle_loop_berserker", true);
+        var idleDefensive = new AnimState("idle_loop_defensive", true);
+        var idleUltimate = new AnimState("idle_loop_ultimate", true);
 
-        var deadState = new AnimState("Idle");
+        var idles = new (string name, AnimState state, Func<bool> when)[]
+        {
+            ("IdleUltimate", idleUltimate, () => Stance(creature) is ChampUltimateStance),
+            ("IdleDefensive", idleDefensive, () => Stance(creature) is ChampDefensiveStance),
+            ("IdleBerserker", idleBerserker, () => Stance(creature) is ChampBerserkerStance),
+            ("Idle", idle, () => Stance(creature) is ChampNoStance or null),
+        };
 
-        var animator = new CreatureAnimator(idleNone, controller);
+        var animator = new CreatureAnimator(PickIdle(), controller);
 
-        animator.AddAnyState("Dead", deadState);
+        foreach (var (name, state, when) in idles)
+            animator.AddAnyState(name, state, when);
 
-        animator.AddAnyState("Attack", attackNone, IsInStance<ChampNoStance>);
-        animator.AddAnyState("Attack", attackBerserker, IsInStance<ChampBerserkerStance>);
-        animator.AddAnyState("Attack", attackDefensive, IsInStance<ChampDefensiveStance>);
-        animator.AddAnyState("Attack", attackUltimate, IsInStance<ChampUltimateStance>);
-        animator.AddAnyState("Attack", attackGladiator, IsInStance<ChampGladiatorStance>);
+        foreach (var (animState, trigger) in AnimationStates)
+        {
+            if (trigger == CreatureAnimator.hitTrigger)
+                continue;
+            foreach (var (_, state, when) in idles)
+                animState.AddConditionalNextState(state, when);
+            animator.AddAnyState(trigger, animState);
+        }
 
-        animator.AddAnyState("Idle", idleNone, IsInStance<ChampNoStance>);
-        animator.AddAnyState("Idle", idleBerserker, IsInStance<ChampBerserkerStance>);
-        animator.AddAnyState("Idle", idleDefensive, IsInStance<ChampDefensiveStance>);
-        animator.AddAnyState("Idle", idleUltimate, IsInStance<ChampUltimateStance>);
-        animator.AddAnyState("Idle", idleGladiator, IsInStance<ChampGladiatorStance>);
+        var hurts = new (AnimState state, Func<bool> when)[]
+        {
+            (new AnimState("hurt_berserker"), () => Stance(creature) is ChampUltimateStance),
+            (new AnimState("hurt_defensive"), () => Stance(creature) is ChampDefensiveStance),
+            (new AnimState("hurt_berserker"), () => Stance(creature) is ChampBerserkerStance),
+            (new AnimState("hurt"), () => Stance(creature) is ChampNoStance),
+        };
 
-        animator.AddAnyState("Hit", hitNone, IsInStance<ChampNoStance>);
-        animator.AddAnyState("Hit", hitBerserker, IsInStance<ChampBerserkerStance>);
-        animator.AddAnyState("Hit", hitDefensive, IsInStance<ChampDefensiveStance>);
-        animator.AddAnyState("Hit", hitUltimate, IsInStance<ChampUltimateStance>);
-        animator.AddAnyState("Hit", hitGladiator, IsInStance<ChampGladiatorStance>);
+        foreach (var (hurtState, hurtWhen) in hurts)
+        {
+            foreach (var (_, idleState, idleWhen) in idles)
+                hurtState.AddConditionalNextState(idleState, idleWhen);
 
+            animator.AddAnyState(CreatureAnimator.hitTrigger, hurtState, hurtWhen);
+        }
 
+        animator.AddAnyState("Dead", new AnimState("die"));
+        animator.AddAnyState("Relaxed", new AnimState("relaxed_loop", true));
         return animator;
 
-        bool IsInStance<T>() where T : ChampStanceModel
-        {
-            return ControllerToPlayer.TryGetValue(controller, out var player)
-                   && ChampModel.IsInStance<T>(player);
-        }
+        AnimState PickIdle() => idles.First(i => i.when()).state;
     }
-    */
 }
 
 public class ChampRelicPool : DownfallRelicPool<Champ>;
 
-public abstract class ChampRelicModel(RelicRarity rarity, bool autoAdd = true) : DownfallRelicModel<Champ>(rarity, autoAdd);
+public abstract class ChampRelicModel(RelicRarity rarity, bool autoAdd = true)
+    : DownfallRelicModel<Champ>(rarity, autoAdd);
 
 public abstract class ChampPowerModel(
     PowerType powerType = PowerType.Buff,

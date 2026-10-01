@@ -16,13 +16,13 @@ namespace Guardian.GuardianCode.Relics;
 [Pool(typeof(GuardianRelicPool))]
 public class BronzeGear : GuardianRelicModel
 {
-    public override bool HasUponPickupEffect => true;
-
     public BronzeGear() : base(RelicRarity.Starter)
     {
-        WithTip(typeof(GearUp));
+        WithTip<GearUp>();
         WithTip(GuardianKeyword.Gem);
     }
+
+    public override bool HasUponPickupEffect => true;
 
     public override RelicModel GetUpgradeReplacement()
     {
@@ -37,10 +37,12 @@ public class BronzeGear : GuardianRelicModel
 
     public override async Task AfterObtained()
     {
+        
         var card = Owner.RunState.Rng.CombatCardGeneration
             .NextItem(GuardianModelDb.AllGems.Where(e => e.Rarity == CardRarity.Common))?
             .ToCard.ToMutable();
         if (card == null) return;
+        //var card = ModelDb.Card<Sapphire>().ToMutable();
         Owner.RunState.AddCard(card, Owner);
         var addResult = await CardPileCmd.Add(card, PileType.Deck);
         CardCmd.PreviewCardPileAdd(addResult);

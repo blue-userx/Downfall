@@ -1,5 +1,7 @@
 ﻿using Automaton.AutomatonCode.Core;
+using Automaton.AutomatonCode.CustomEnums;
 using BaseLib.Utils;
+using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -13,17 +15,23 @@ namespace Automaton.AutomatonCode.Potions;
 [Pool(typeof(AutomatonPotionPool))]
 public class VexingDraughtPotion : AutomatonPotionModel
 {
-    public VexingDraughtPotion() : base(PotionRarity.Common, PotionUsage.CombatOnly, TargetType.Self)
+    public VexingDraughtPotion() : base(PotionRarity.Common, PotionUsage.CombatOnly, TargetType.AnyPlayer)
     {
         WithPower<StrengthPower>(2);
         WithPower<DexterityPower>(2);
+        WithCards(2);
         WithTip<Burn>();
+        WithTip(AutomatonTip.Stash);
     }
+    
+    protected override Artist Artist => Artist.Get<Fulgur>();
 
     protected override async Task OnUse(PlayerChoiceContext ctx, Creature? target)
     {
-        await MyCommonActions.ApplySelf<StrengthPower>(ctx, this);
-        await MyCommonActions.ApplySelf<DexterityPower>(ctx, this);
-        await StashCmd.Stash<Burn>(Owner, 2);
+        var player = target?.Player;
+        if (player == null) return;
+        await MyCommonActions.Apply<StrengthPower>(ctx, this, target);
+        await MyCommonActions.Apply<DexterityPower>(ctx, this, target);
+        await StashCmd.Stash<Burn>(ctx, player, DynamicVars.Cards.IntValue);
     }
 }

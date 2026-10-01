@@ -1,10 +1,7 @@
-﻿using Awakened.AwakenedCode.Powers;
-using BaseLib.Utils;
+﻿using BaseLib.Utils;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Creatures;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Models.Powers;
 
@@ -21,28 +18,7 @@ public class Ceremony : AwakenedCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await CommonActions.ApplySelf<StrengthPower>(ctx, this);
-    }
-
-    // Fervent Worship stuff
-    public override Task AfterCardGeneratedForCombat(CardModel card, Player? creator)
-    {
-        if (card != this) return Task.CompletedTask;
-        var a = Owner.Creature.GetPowerAmount<FerventWorshipPower>();
-        if (a == 0) return Task.CompletedTask;
-        EnergyCost.UpgradeBy(a);
-        BaseReplayCount += a;
-        return Task.CompletedTask;
-    }
-
-    public override Task AfterPowerAmountChanged(PlayerChoiceContext ctx, PowerModel power, decimal amount,
-        Creature? applier,
-        CardModel? cardSource)
-    {
-        if (power is not FerventWorshipPower || power.Owner != Owner.Creature) return Task.CompletedTask;
-        var i = (int)amount;
-        EnergyCost.UpgradeBy(i);
-        BaseReplayCount += i;
-        return Task.CompletedTask;
     }
 }

@@ -12,8 +12,9 @@ public class Magnificence : ChampCardModel
 {
     public Magnificence() : base(1, CardType.Power, CardRarity.Rare, TargetType.Self)
     {
-        this.WithPower<MagnificencePower>(3, 1, false);
-        this.WithTip<GloryPower>();
+        WithPower<MagnificencePower>(3, 1, false);
+        WithTip<GloryPower>();
+        //this.WithUltimateTip();
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();

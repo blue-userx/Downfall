@@ -61,7 +61,7 @@ public class GremlinsRunModel() : CustomSingletonModel(HookType.Run)
 
     public override Task AfterActEntered()
     {
-        var runState = RunManager.Instance.DebugOnlyGetState();
+        var runState = RunManager.Instance.State;
         if (runState is not { ActFloor: 1 }) return Task.CompletedTask;
         foreach (var player in runState.Players)
             if (player.Character is Gremlins)

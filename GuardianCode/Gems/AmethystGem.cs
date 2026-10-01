@@ -6,6 +6,7 @@ using Guardian.GuardianCode.Events;
 using Guardian.GuardianCode.Extensions;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
@@ -22,10 +23,11 @@ public class AmethystGem : GemModel
     public override Color GemColor => new(0xA500C9FF);
     public override CardRarity Rarity => CardRarity.Uncommon;
 
-    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay)
+    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay,
+        IEnumerable<Player> targetPlayers)
     {
-        var effect = GuardianHook.ModifyGemEffect(CombatState, this, DynamicVars.Gem().BaseValue, Card);
-        await PowerCmd.Apply<AmethystGemPower>(ctx, CombatState.Enemies, effect, Player.Creature,
+        var effect = GuardianHook.ModifyGemEffect(CombatState, this, DynamicVars.Gem.BaseValue, Card);
+        await PowerCmd.Apply<AmethystGemPower>(ctx, CombatState.HittableEnemies, effect, Player.Creature,
             cardPlay?.Card ?? Card);
     }
 }
@@ -33,5 +35,7 @@ public class AmethystGem : GemModel
 public class AmethystGemPower : TemporaryDebuffPowerWrapper<AmethystGem, StrengthPower>
 {
     public override LocString Title => OriginModel is GemModel gem ? gem.Title : base.Title;
-    protected override IEnumerable<IHoverTip> ExtraHoverTips => OriginModel is GemModel gem ? gem.HoverTips : base.ExtraHoverTips;
+
+    protected override IEnumerable<IHoverTip> ExtraHoverTips =>
+        OriginModel is GemModel gem ? gem.HoverTips : base.ExtraHoverTips;
 }

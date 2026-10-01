@@ -1,6 +1,7 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Guardian.GuardianCode.Core;
+using Guardian.GuardianCode.CustomEnums;
 using Guardian.GuardianCode.Interfaces;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -14,12 +15,16 @@ public class MultiBeam : GuardianCardModel, ITickCard, ICustomTickDuration
     {
         WithDamage(3, 3);
         WithVar("Increase", 2, 1);
+        WithTip(GuardianTip.Tick);
+        WithTip(GuardianTip.Stasis);
     }
 
     protected override Artist Artist => Artist.Get<Magerblutooth>();
 
 
     protected override bool HasEnergyCostX => true;
+
+    public int TickDuration => 3;
 
     public Task OnTick(PlayerChoiceContext ctx)
     {
@@ -32,6 +37,4 @@ public class MultiBeam : GuardianCardModel, ITickCard, ICustomTickDuration
         var x = ResolveEnergyXValue();
         await CommonActions.CardAttack(this, cardPlay).WithHitCount(x).Execute(ctx);
     }
-
-    public int TickDuration => 3;
 }

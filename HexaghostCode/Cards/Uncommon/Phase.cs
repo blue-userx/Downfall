@@ -13,8 +13,10 @@ public class Phase : HexaghostCardModel
     public Phase() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
         WithBlock(6, 3);
-        this.WithPower<VeilpiercerPower>(1, false);
+        WithPower<VeilpiercerPower>(1, false);
         WithTip(CardKeyword.Ethereal);
+        WithTip(CardKeyword.Exhaust);
+        WithEnergyTip();
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();

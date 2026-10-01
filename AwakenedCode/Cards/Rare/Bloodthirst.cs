@@ -1,6 +1,7 @@
 using Awakened.AwakenedCode.Core;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -13,14 +14,15 @@ namespace Awakened.AwakenedCode.Cards.Rare;
 [Pool(typeof(AwakenedCardPool))]
 public class Bloodthirst : AwakenedCardModel
 {
-    public override bool CanBeGeneratedInCombat => false;
     public Bloodthirst() : base(2, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
         WithDamage(20, 5);
         WithTip(CardKeyword.Exhaust);
-        this.WithTip<PowerPotion>();
+        WithTip<PowerPotion>();
         WithTip(StaticHoverTip.Fatal);
     }
+
+    public override bool CanBeGeneratedInCombat => false;
 
     protected override Artist Artist => Artist.Get<Opal>();
 
@@ -34,6 +36,6 @@ public class Bloodthirst : AwakenedCardModel
             return;
         var potion = ModelDb.Potion<PowerPotion>().ToMutable();
         await PotionCmd.TryToProcure(potion, Owner);
-        await CardCmd.Exhaust(ctx, this);
+        await CardCmdCompatibility.Exhaust(ctx, this);
     }
 }

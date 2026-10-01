@@ -3,6 +3,7 @@ using Automaton.AutomatonCode.Core;
 using Automaton.AutomatonCode.Powers;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -13,15 +14,16 @@ public class InfiniteBeams : AutomatonCardModel
 {
     public InfiniteBeams() : base(2, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
-        this.WithTip<MinorBeam>();
+        WithTip<MinorBeam>();
         WithCostUpgradeBy(-1);
-        this.WithPower<InfiniteBeamsPower>(1, false);
+        WithPower<InfiniteBeamsPower>(1, false);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
-    protected override Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
+    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        return CommonActions.ApplySelf<InfiniteBeamsPower>(ctx, this);
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
+        await CommonActions.ApplySelf<InfiniteBeamsPower>(ctx, this);
     }
 }

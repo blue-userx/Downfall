@@ -15,8 +15,8 @@ public class Format : AutomatonCardModel
     public Format() : base(0, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
         WithKeywords(CardKeyword.Exhaust);
-        WithTip(AutomatonTip.Encode);
-        this.WithUpgradedCardTip<Fragment>();
+        WithTip(AutomatonKeyword.Encode);
+        WithUpgradedCardTip<Fragment>();
         WithEnergy(1);
     }
 

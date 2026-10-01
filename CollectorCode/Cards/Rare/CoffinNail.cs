@@ -1,7 +1,7 @@
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
+using Collector.CollectorCode.Powers;
 using Downfall.DownfallCode.Artists;
-using Downfall.DownfallCode.Powers;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
@@ -11,11 +11,12 @@ namespace Collector.CollectorCode.Cards.Rare;
 [Pool(typeof(CollectorCardPool))]
 public class CoffinNail : CollectorCardModel
 {
-    public CoffinNail() : base(0, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
+    public CoffinNail() : base(3, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
-        WithDamage(6, 2);
-        WithVar("Increase", 6, 2);
-        WithPower<CopyNextTurnPower>(1);
+        WithDamage(37, 7);
+        WithVar("Increase", 9, 2);
+        WithPower<CopyNextTurnPower>(1, false);
+        WithTip(CardKeyword.Exhaust);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
@@ -29,10 +30,14 @@ public class CoffinNail : CollectorCardModel
         bool causedByEthereal)
     {
         if (card != this) return;
-
-        var power = await CommonActions.ApplySelf<CopyNextTurnPower>(ctx, this);
-        if (power == null) return;
-        power.Card = this;
-        power.OnAdd = c => c.DynamicVars.Damage.UpgradeValueBy(DynamicVars["Increase"].BaseValue);
+        var playCount = await GeneratePlayCount(CombatState!, null);
+        for (var i = 0; i < playCount; i++)
+        {
+            var power = await CommonActions.ApplySelf<CopyNextTurnPower>(ctx, this);
+            if (power == null) return;
+            power.Card = this;
+ 
+            power.OnAdd = c => c.DynamicVars.Damage.UpgradeValueBy(DynamicVars["Increase"].BaseValue);
+        }
     }
 }

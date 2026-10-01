@@ -1,4 +1,3 @@
-using BaseLib.Extensions;
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
 using Collector.CollectorCode.Powers;
@@ -7,6 +6,8 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Collector.CollectorCode.Cards.Uncommon;
@@ -17,21 +18,30 @@ public class BlackBindings : CollectorCardModel
     public BlackBindings() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
         WithPower<WeakPower>(2);
-        WithPower<CollectorDoomPower>(2, 2);
+        WithCalculatedVar("Miasma", 0, 2, Calc, 0, 1);
+        WithTip<MiasmaPower>();
+    }
+
+    private static decimal Calc(CardModel card, Creature? creature)
+    {
+        if (creature == null) return 0;
+        var amount = creature.Powers.Count(ShouldCountPower);
+        return amount;
+    }
+    
+    
+    private static bool ShouldCountPower(PowerModel power)
+    {
+        return power.TypeForCurrentAmount == PowerType.Debuff && power is not ITemporaryPower;
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
-
-    private static decimal DamageCalc(Creature? creature)
-    {
-        return creature?.Powers.Count(e => e.Type == PowerType.Debuff) ?? 0;
-    }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         if (cardPlay.Target == null) return;
         await CommonActions.Apply<WeakPower>(ctx, cardPlay.Target, this);
-        var amount = DamageCalc(cardPlay.Target) * DynamicVars.Power<CollectorDoomPower>().BaseValue;
-        await CommonActions.Apply<CollectorDoomPower>(ctx, cardPlay.Target, this, amount);
+        var value = ((CalculatedVar)DynamicVars["Miasma"]).Calculate(cardPlay.Target);
+        await CommonActions.Apply<MiasmaPower>(ctx, cardPlay.Target, this, value);
     }
 }

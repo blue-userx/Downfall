@@ -51,6 +51,11 @@
           "name": "selectionScreenPrompt",
           "file": "powers.json",
           "optional": true
+        },
+        {
+          "name": "remoteDescription",
+          "file": "powers.json",
+          "optional": true
         }
       ]
     },
@@ -135,7 +140,8 @@
     {
       "id": "relic",
       "markers": [
-        "SneckoRelicModel"
+        "SneckoRelicModel",
+        "CustomRelicModel"
       ],
       "fields": [
         {
@@ -174,20 +180,6 @@
       ]
     }
   ],
-  "pinnedColors": [
-    {
-      "tag": "gold"
-    },
-    {
-      "tag": "blue"
-    },
-    {
-      "hex": "#E087A4",
-      "label": "#E087A4"
-    },
-    {
-      "hex": "#00B888",
-      "label": "#00B888"
-    }
-  ]
+  "pinnedColors": [],
+  "customTags": []
 }

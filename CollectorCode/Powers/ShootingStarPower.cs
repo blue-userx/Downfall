@@ -1,5 +1,5 @@
-using BaseLib.Abstracts;
 using Collector.CollectorCode.Core;
+using Collector.CollectorCode.CustomEnums;
 using Collector.CollectorCode.Events;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -10,20 +10,26 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace Collector.CollectorCode.Powers;
 
-public class ShootingStarPower : CollectorPowerModel, IOnPyre, IHasSecondAmount
+public class ShootingStarPower : CollectorPowerModel, IAfterCardPyred
 {
+    public ShootingStarPower()
+    {
+        WithTip(CollectorTip.Pyred);
+        WithTip(CollectorKeyword.Pyre);
+    }
+    
     private int _usesThisTurn;
 
-    public string GetSecondAmount()
-    {
-        return $"{Amount - _usesThisTurn}";
-    }
 
-    public async Task OnPyre(PlayerChoiceContext ctx, CardModel card, CardModel pyred)
+    public override int DisplayAmount => Amount - _usesThisTurn;
+
+    
+
+    public async Task AfterCardPyred(PlayerChoiceContext ctx, CardModel card, CardModel pyred)
     {
         if (card.Owner.Creature != Owner || pyred.Type != CardType.Attack || _usesThisTurn >= Amount) return;
         var copy = pyred.CreateClone();
-        copy.EnergyCost.SetUntilPlayed(0);
+        copy.SetToFreeThisTurn();
         await CardPileCmd.Add(copy, PileType.Hand);
         _usesThisTurn++;
         Flash();

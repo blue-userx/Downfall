@@ -14,21 +14,21 @@ public class Circumvent : ChampCardModel
 {
     public Circumvent() : base(1, CardType.Skill, CardRarity.Common, TargetType.Self)
     {
-        WithBlock(6, 3);
+        WithBlock(5, 3);
         WithCards(2);
-        this.WithDefensiveTip();
+        //this.WithDefensiveTip();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
-    protected override bool ShouldGlowRedInternal => !Owner.ShouldDefensiveComboTrigger();
+    protected override bool ShouldGlowRedInternal => !Owner.ShouldDefensiveComboTrigger;
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardBlock(this, cardPlay);
         await CommonActions.Draw(this, ctx);
 
-        if (Owner.ShouldDefensiveComboTrigger()) return;
+        if (Owner.ShouldDefensiveComboTrigger) return;
         var prefs = new CardSelectorPrefs(CardSelectorPrefs.DiscardSelectionPrompt, DynamicVars.Cards.IntValue);
         var cards = await CardSelectCmd.FromHandForDiscard(ctx, Owner, prefs, null, this);
         await CardCmd.Discard(ctx, cards);

@@ -1,5 +1,4 @@
 ﻿using BaseLib.Utils;
-using Hexaghost.HexaghostCode.Core;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models.CardPools;
@@ -11,7 +10,8 @@ public class ShadowStrike : HexaghostCardModel
 {
     public ShadowStrike() : base(0, CardType.Attack, CardRarity.Token, TargetType.AnyEnemy)
     {
-        WithDamage(5, 2);
+        WithDamage(4, 2);
+        WithTags(CardTag.Strike);
         WithKeywords(CardKeyword.Exhaust, CardKeyword.Retain);
     }
 

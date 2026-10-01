@@ -1,7 +1,6 @@
 using Awakened.AwakenedCode.Cards.Token;
 using Awakened.AwakenedCode.Core;
-using Awakened.AwakenedCode.Displays;
-using Awakened.AwakenedCode.Extensions;
+using Awakened.AwakenedCode.Piles;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Commands;
@@ -16,9 +15,9 @@ public class Inscribe : AwakenedCardModel
 {
     public Inscribe() : base(0, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
-        this.WithConjure(e => e.IsUpgraded);
+        WithConjure(e => e.IsUpgraded);
     }
-    
+
     protected override Artist Artist => Artist.Get<Opal>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
@@ -27,7 +26,7 @@ public class Inscribe : AwakenedCardModel
             await AwakenedCmd.Conjure(Owner);
 
         var combatState = Owner.Creature.CombatState!;
-        
+
         var choices = new List<CardModel>
         {
             combatState.CreateCard<BurningStudy>(Owner),
@@ -39,15 +38,14 @@ public class Inscribe : AwakenedCardModel
         var chosen = await CardSelectCmd.FromChooseACardScreen(ctx, choices, Owner);
         if (chosen == null) return;
 
-        var spellbook = AwakenedModel.GetOrInitSpellbook(Owner);
+        var spellbook = AwakenedCmd.GetSpellbook(Owner);
 
         spellbook.AddPersistentType(chosen);
         spellbook.AddPersistentType(chosen);
 
         var dupe = chosen.CreateClone();
-        spellbook.AddInternal(chosen);
-        spellbook.AddInternal(dupe);
-
-        AwakenedDisplay.Refresh(Owner);
+        var a = await CardPileCmd.Add([chosen, dupe], AwakenedPile.Spellbook);
+        CardCmd.PreviewCardPileAdd(a, 0.2f);
+        //AwakenedDisplay.RefreshSpellDisplays(Owner);
     }
 }

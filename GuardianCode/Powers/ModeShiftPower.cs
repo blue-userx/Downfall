@@ -1,4 +1,3 @@
-using BaseLib.Abstracts;
 using Guardian.GuardianCode.Core;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -9,23 +8,20 @@ using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Guardian.GuardianCode.Powers;
 
-public class ModeShiftPower : GuardianPowerModel, IHasSecondAmount
+public class ModeShiftPower : GuardianPowerModel
 {
     public ModeShiftPower()
     {
         WithVar("CurrentLimit", 20);
-        WithVar("MaxLimit", 50);
+        WithVar("MaxLimit", 40);
         WithVar("Increase", 10);
-        WithBlock(16);
+        WithBlock(12);
     }
 
     public override bool ShouldRemoveDueToZero => false;
     public override bool AllowNegative => true;
 
-    public string GetSecondAmount()
-    {
-        return $"{DynamicVars["CurrentLimit"].BaseValue}";
-    }
+    protected override int? SecondAmount => DynamicVars["CurrentLimit"].IntValue;
 
     public override async Task AfterDamageReceived(PlayerChoiceContext ctx, Creature target,
         DamageResult result, ValueProp props,
@@ -35,10 +31,7 @@ public class ModeShiftPower : GuardianPowerModel, IHasSecondAmount
         var a = result.UnblockedDamage;
         if (a <= 0) return;
         SetAmount(Amount - a, true);
-        while (Amount <= 0)
-        {
-            await Reset(ctx);
-        }
+        while (Amount <= 0) await Reset(ctx);
     }
 
 

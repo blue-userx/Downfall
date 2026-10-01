@@ -1,5 +1,4 @@
 ﻿using Awakened.AwakenedCode.Core;
-using Awakened.AwakenedCode.Extensions;
 using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -12,13 +11,13 @@ public class TalonRend : AwakenedCardModel
     public TalonRend() : base(1, CardType.Attack, CardRarity.Ancient, TargetType.AnyEnemy)
     {
         WithDamage(5, 3);
-        this.WithRepeat(2);
-        this.WithConjure();
+        WithRepeat(2);
+        WithConjure();
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay, DynamicVars.Repeat.IntValue, vfx: "vfx/vfx_attack_slash")
+        await CommonActions.CardAttack(this, cardPlay, DynamicVars.Repeat.IntValue, "vfx/vfx_attack_slash")
             .Execute(ctx);
         await AwakenedCmd.Conjure(Owner);
         await AwakenedCmd.Conjure(Owner);

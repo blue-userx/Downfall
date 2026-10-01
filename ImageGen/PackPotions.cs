@@ -35,11 +35,11 @@ public class PackPotions(string scriptDir, bool force)
             Directory.CreateDirectory(d);
 
         var seen = new HashSet<string>();
-        var inputFiles = (from sub in InputSubdirs 
+        var inputFiles = (from sub in InputSubdirs
             select Path.Join(ImagesDir, sub, charId)
-            into d 
-            where Directory.Exists(d) 
-            from file in Directory.EnumerateFiles(d, "*.png").Order() 
+            into d
+            where Directory.Exists(d)
+            from file in Directory.EnumerateFiles(d, "*.png").Order()
             where seen.Add(Path.GetFileName(file))
             select file).ToList();
 
@@ -99,9 +99,9 @@ public class PackPotions(string scriptDir, bool force)
             outlineAtlas.Mutate(ctx => ctx.DrawImage(outline, new Point(ox, oy), 1f));
 
             Utils.WriteTres(Path.Join(outTres, $"{tresName}.tres"),
-                atlasResPath, ax, ay, small.Width, small.Height, $"{charId}_{stem}_atlas");
+                atlasResPath, ax, ay, small.Width, small.Height, $"{charId}_{tresName}_atlas");
             Utils.WriteTres(Path.Join(outTres, $"{tresName}_outline.tres"),
-                outlineResPath, ox, oy, outline.Width, outline.Height, $"{charId}_{stem}_outline");
+                outlineResPath, ox, oy, outline.Width, outline.Height, $"{charId}_{tresName}_outline");
         }
 
         Utils.SaveImageIfChanged(atlas, Path.Join(outAtlases, "potion_atlas.png"));

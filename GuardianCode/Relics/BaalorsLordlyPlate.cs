@@ -1,5 +1,4 @@
 using BaseLib.Utils;
-using Downfall.DownfallCode.Abstract;
 using Guardian.GuardianCode.Core;
 using Guardian.GuardianCode.CustomEnums;
 using Guardian.GuardianCode.DynamicVars;
@@ -18,9 +17,15 @@ public class BaalorsLordlyPlate : GuardianRelicModel, IModifyBraceAmount
         WithTip(GuardianTip.Brace);
         WithVars(new BraceVar(1));
     }
-    
+
     public decimal ModifyBraceAmount(Player player, decimal amount)
     {
-        return player == Owner ? amount + DynamicVars.Brace().BaseValue : amount;
+        return player == Owner ? amount + DynamicVars.Brace.BaseValue : amount;
+    }
+
+    public Task AfterModifyingBraceAmount(Player player, decimal modifiedAmount)
+    {
+        Flash();
+        return Task.CompletedTask;
     }
 }

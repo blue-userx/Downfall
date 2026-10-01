@@ -9,16 +9,23 @@ using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Automaton.AutomatonCode.Encode;
 
-public class StrengthEncode : Encodable
+public class StrengthEncode : ValueEncode
 {
+    public override string Id => "STRENGTH_ENCODE";
+    public override int Order => 3;
+
     public override TargetType Target => TargetType.Self;
     public override CardType Type => CardType.Skill;
+    public override DynamicVar FunctionDynamicVar => new PowerVar<StrengthPower>(0);
+
     public override Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
-        return PowerCmd.Apply<StrengthPower>(ctx, model.GetCreature(),
-            model.GetDynamicVars().Strength.BaseValue, model.GetCreature(), model as CardModel);
+        return PowerCmd.Apply<StrengthPower>(ctx, model.Creature,
+            model.DynamicVars.Strength.BaseValue, model.Creature, model as CardModel);
     }
-    public override DynamicVar FunctionDynamicVar => new PowerVar<StrengthPower>(0);
-    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model) => [HoverTipFactory.FromPower<StrengthPower>()];
-    public override DynamicVar DynamicVar(AbstractModel model) => model.GetDynamicVars().Strength;
+
+    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model)
+    {
+        return [HoverTipFactory.FromPower<StrengthPower>()];
+    }
 }

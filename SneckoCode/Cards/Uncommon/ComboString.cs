@@ -1,11 +1,12 @@
 using BaseLib.Utils;
+using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using Snecko.SneckoCode.Core;
-using Snecko.SneckoCode.Extensions;
 using Snecko.SneckoCode.Interfaces;
 
 namespace Snecko.SneckoCode.Cards.Uncommon;
@@ -15,12 +16,13 @@ public class ComboString : SneckoCardModel, IHasGift
 {
     public ComboString() : base(1, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        this.WithGift(new Gift
+        WithGift(new Gift
         {
             Rarity = CardRarity.Uncommon
         });
         WithDamage(7, 2);
         WithCalculatedVar("Repeat", 0, CalcDamage);
+        WithTip(DownfallTip.Offclass);
     }
 
     public Gift? Gift { get; set; }
@@ -30,7 +32,7 @@ public class ComboString : SneckoCardModel, IHasGift
         return CombatManager.Instance.History
             .CardPlaysFinished.Count(e =>
                 e.HappenedThisTurn(card.CombatState) &&
-                SneckoCmd.IsOffclass(e.CardPlay.Card) && e.Actor == card.Owner.Creature);
+                DownfallCmd.IsOffclass(e.CardPlay.Card) && e.Actor == card.Owner.Creature);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)

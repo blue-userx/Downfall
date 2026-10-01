@@ -1,11 +1,15 @@
+using Downfall.DownfallCode.Commands;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Events;
+using Hexaghost.HexaghostCode.DynamicVars;
+using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Ghostflames.Intents;
 using Hexaghost.HexaghostCode.Vfx;
 using MegaCrit.Sts2.Core.Commands;
-using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.ValueProps;
@@ -14,33 +18,45 @@ namespace Hexaghost.HexaghostCode.Ghostflames;
 
 public class BolsteringGhostflame : GhostflameModel
 {
-    public override AbstractIntent Intent => new BolsteringIntent();
+    public override AbstractIntent Intent => new BolsteringIntent(() => DynamicVars.GhostflameBlock);
+
     protected override int IgnitionRequirement => 1;
 
     public override FireColor FireColor => FireColor.Blue;
 
+
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        new GhostflameBlockVar(4),
+        new PowerVar<StrengthPower>(1)
+    ];
+
+    protected override IEnumerable<IHoverTip> ExtraHoverTips =>
+    [
+        HoverTipFactory.Static(StaticHoverTip.Block),
+        HoverTipFactory.FromPower<StrengthPower>()
+    ];
+
     public override async Task OnIgnite(PlayerChoiceContext ctx)
     {
-        if (Owner.Creature.CombatState == null) return;
+        if (!TryBeginIgnite()) return;
 
-        SfxCmd.Play("event:/sfx/characters/attack_fire");
-
-        var repeat = 1 + Repeat(GhostflameRepeatType.Block);
-        var block = Intensity;
+        var block = DynamicVars.GhostflameBlock;
+        var repeat = Repeat(GhostflameRepeatType.Block);
         for (var i = 0; i < repeat; i++)
-            await CreatureCmd.GainBlock(Owner.Creature, 4 + block, ValueProp.Move | ValueProp.Unpowered, null);
-
-        await PowerCmd.Apply<StrengthPower>(ctx, Owner.Creature, 1, Owner.Creature, null);
+        {
+            await CreatureCmd.GainBlock(Owner.Creature, block, BlockProps.nonCardUnpowered, null);
+            await MyCommonActions.ApplySelf<StrengthPower>(ctx, this);
+        }
     }
 
-    protected override async Task BeforeCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
+    protected override Task BeforeCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        if (!IsActive || cardPlay.Card.Owner != Owner ||
-            LocalContext.NetId == null) return;
-        var shouldCount = HexaghostHook.GhostflameConditionOverwrites(CombatState, Owner, this, cardPlay);
-        if (!(cardPlay.Card.Type == CardType.Power || shouldCount)) return;
+        return TriggerOnCardType(ctx, cardPlay, CardType.Power);
+    }
 
-        if (!TryProgress()) return;
-        await Ignite(ctx);
+    public override bool AboutToIgnite(CardModel card)
+    {
+        return card.Type == CardType.Power && IgnitionRequirement - IgnitionProgress <= 1;
     }
 }

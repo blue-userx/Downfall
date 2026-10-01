@@ -1,10 +1,10 @@
 using BaseLib.Utils;
+using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
-using MegaCrit.Sts2.Core.Extensions;
-using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Runs;
@@ -17,21 +17,24 @@ public class UnidentifiedEgg : SneckoRelicModel
 {
     public UnidentifiedEgg() : base(RelicRarity.Rare)
     {
-        WithVars(new CardsVar(2));
+        WithTip(DownfallTip.Offclass);
     }
-
-    public override bool HasUponPickupEffect => true;
+    
+    /*
+   public override bool HasUponPickupEffect => true;
 
     public override Task AfterObtained()
     {
         foreach (var card in PileType.Deck.GetPile(Owner)
-                     .Cards.Where(c => SneckoCmd.IsOffclass(c) && c.IsUpgradable)
+                     .Cards.Where(c => DownfallCmd.IsOffclass(c) && c.IsUpgradable)
                      .ToList()
                      .StableShuffle(Owner.RunState.Rng.Niche)
                      .Take(DynamicVars.Cards.IntValue))
             CardCmd.Upgrade(card);
         return Task.CompletedTask;
     }
+
+     */
 
     public override bool TryModifyCardRewardOptionsLate(
         Player player,
@@ -40,7 +43,7 @@ public class UnidentifiedEgg : SneckoRelicModel
     {
         if (player != Owner || options.Flags.HasFlag(CardCreationFlags.NoHookUpgrades))
             return false;
-        UpgradeValidCards(cardRewards, SneckoCmd.IsOffclass, this);
+        UpgradeValidCards(cardRewards, DownfallCmd.IsOffclass, this);
         return true;
     }
 
@@ -50,13 +53,13 @@ public class UnidentifiedEgg : SneckoRelicModel
     {
         if (player != Owner)
             return;
-        UpgradeValidCards(cards, SneckoCmd.IsOffclass, this);
+        UpgradeValidCards(cards, DownfallCmd.IsOffclass, this);
     }
 
     public override bool TryModifyCardBeingAddedToDeck(CardModel card, out CardModel? newCard)
     {
         newCard = null;
-        if (card.Owner != Owner || !SneckoCmd.IsOffclass(card) || !card.IsUpgradable)
+        if (card.Owner != Owner || !DownfallCmd.IsOffclass(card) || !card.IsUpgradable)
             return false;
         newCard = Owner.RunState.CloneCard(card);
         CardCmd.Upgrade(newCard, CardPreviewStyle.None);

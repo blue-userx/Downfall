@@ -14,12 +14,12 @@ public class BronzeBrambles : GuardianCardModel
     public BronzeBrambles() : base(3, CardType.Power, CardRarity.Rare, TargetType.Self)
     {
         WithCostUpgradeBy(-1);
-        this.WithPower<BronzeBramblesPower>(1, false);
-        this.WithTip<ThornsPower>();
+        WithPower<BronzeBramblesPower>(1, false);
+        WithTip<ThornsPower>();
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();
-    
+
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.ApplySelf<BronzeBramblesPower>(ctx, this);

@@ -14,9 +14,9 @@ public class RecycleBinPower : AutomatonPowerModel
         IEnumerable<Creature> participants)
     {
         if (!participants.Contains(Owner)) return;
-        var block = Owner.Player?.GetHand().Count(e => e.Type is CardType.Curse or CardType.Status);
+        var block = Owner.Player?.Hand.Count(e => e.Type is CardType.Curse or CardType.Status);
         if (block is null or 0) return;
         Flash();
-        await CreatureCmd.GainBlock(Owner, block.Value * Amount, ValueProp.Unpowered, null);
+        await CreatureCmd.GainBlock(Owner, block.Value * Amount, BlockProps.nonCardUnpowered, null);
     }
 }

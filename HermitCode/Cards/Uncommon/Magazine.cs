@@ -1,4 +1,5 @@
 ﻿using BaseLib.Utils;
+using Downfall.DownfallCode.Artists;
 using Hermit.HermitCode.Powers;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -10,9 +11,12 @@ public class Magazine : HermitCardModel
 {
     public Magazine() : base(2, CardType.Power, CardRarity.Uncommon, TargetType.Self)
     {
-        this.WithPower<MagazinePower>(6, 3, false);
+        WithPower<MagazinePower>(6, false);
+        WithCostUpgradeBy(-1);
         WithTip(CardKeyword.Retain);
     }
+
+    protected override Artist Artist => Artist.Get<GoofballMcgee>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {

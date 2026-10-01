@@ -1,4 +1,6 @@
+﻿using Downfall.DownfallCode.Extensions;
 using BaseLib.Patches.Content;
+using Downfall.DownfallCode.Compatibility;
 using Guardian.GuardianCode.Cards.Abstract;
 using Guardian.GuardianCode.CustomEnums;
 using Guardian.GuardianCode.Displays;
@@ -38,40 +40,18 @@ public static class GuardianCmd
         return GuardianCombatModel.SetMode(ctx, player, GuardianModelDb.GuardianMode<GuardianNormalMode>());
     }
 
-    public static Task ChangeMode(PlayerChoiceContext ctx, Player player)
-    {
-        return IsInMode<GuardianNormalMode>(player) ? EnterDefensiveMode(ctx, player) : LeaveDefensiveMode(ctx, player);
-    }
-
-    public static GuardianModeModel GetMode(Player player)
-    {
-        return GuardianCombatModel.ActiveMode[player] ?? GuardianModelDb.GuardianMode<GuardianNormalMode>();
-    }
-
     public static bool IsInMode<T>(Player player) where T : GuardianModeModel
     {
         return GuardianCombatModel.ActiveMode[player] is T;
     }
 
-    // Stasis
-    public static int GetStasisCount(Player player)
-    {
-        return TryGetStasisPile(player)?.Cards.Count ?? 0;
-    }
-
-    public static IReadOnlyList<CardModel> GetStasisCards(Player player)
-    {
-        return TryGetStasisPile(player)?.Cards ?? [];
-    }
 
     public static GuardianPile GetStasisPile(Player player)
     {
-        return (GuardianPile)GuardianPile.Stasis.GetPile(player);
-    }
-
-    private static GuardianPile? TryGetStasisPile(Player player)
-    {
-        return CustomPiles.GetCustomPile(player.PlayerCombatState, GuardianPile.Stasis) as GuardianPile;
+        var pile = CustomPiles.GetCustomPile(player.PlayerCombatState, GuardianPile.Stasis);
+        if (pile == null)
+            throw new ArgumentNullException(nameof(pile));
+        return (GuardianPile)pile;
     }
 
     public static int GetMaxStasisSlots(Player player)
@@ -98,8 +78,7 @@ public static class GuardianCmd
     public static bool CanPutIntoStasis(Player player, Player? askingPlayer = null, bool silent = false)
     {
         askingPlayer ??= player;
-        var pile = GuardianCombatModel.GetOrInitStasis(player);
-        if (pile.Cards.Count < GetMaxStasisSlots(player)) return true;
+        if (GuardianCombatModel.GetEffectiveStasisCount(player) < GetMaxStasisSlots(player)) return true;
         if (silent || !LocalContext.IsMe(askingPlayer)) return false;
         ThinkCmd.Play(FullStasisText, player.Creature, 2.0);
         return false;
@@ -108,17 +87,17 @@ public static class GuardianCmd
     public static async Task<bool> PutIntoStasis(CardModel card, PlayerChoiceContext ctx, AbstractModel source,
         bool silent = false)
     {
-        var cs = source.GetCreature().CombatState;
+        var cs = source.Creature.CombatState;
         if (cs == null) return false;
         var player = card.Owner;
         var pile = GuardianCombatModel.GetOrInitStasis(player);
-        if (pile.Cards.Count >= GetMaxStasisSlots(player))
+        if (GuardianCombatModel.GetEffectiveStasisCount(player) >= GetMaxStasisSlots(player))
         {
             if (!silent && LocalContext.IsMe(player))
                 ThinkCmd.Play(FullStasisText, player.Creature, 2.0);
             return false;
         }
-        
+
         await GuardianHook.BeforeCardEntersStasis(cs, ctx, card, source);
         await CardPileCmd.Add(card, pile, skipVisuals: silent);
         SetStasisCounter(card);
@@ -133,6 +112,8 @@ public static class GuardianCmd
 
     public static void SetStasisCounter(CardModel card)
     {
+        card.EnergyCost.EndOfTurnCleanup();
+        card.EnergyCost.AfterCardPlayedCleanup();
         GuardianCombatModel.StasisCounter[card] = CalculateStasisCounter(card);
         GuardianDisplay.Refresh(card.Owner);
     }
@@ -141,21 +122,19 @@ public static class GuardianCmd
     {
         if (card is ICustomTickDuration custom)
             return custom.TickDuration;
-        else if(card.EnergyCost.CostsX)
-            return card.Owner.PlayerCombatState!.Energy + 1;
-        else
-            return card.EnergyCost.GetResolved() + 1;
+        return card.EnergyCost.GetAmountToSpend() + 1;
     }
 
     private static async Task ReturnFromStasis(CardModel card, Player player, PlayerChoiceContext ctx)
     {
         if (card.Keywords.Contains(GuardianKeyword.Volatile))
         {
-            await CardCmd.Exhaust(ctx, card);
+            await CardCmdCompatibility.Exhaust(ctx, card);
             return;
         }
+
         await CardPileCmd.Add(card, PileType.Hand.GetPile(player));
-        card.EnergyCost.SetUntilPlayed(0);
+        card.SetToFreeThisTurn();
     }
 
     private static async Task<bool> TickCard(CardModel card, Player player, PlayerChoiceContext ctx)
@@ -173,13 +152,13 @@ public static class GuardianCmd
         if (GuardianCombatModel.StasisCounter[card] != 0) return false;
         await ReturnFromStasis(card, player, ctx);
         return true;
-
     }
 
 
     public static async Task TickAll(Player player, PlayerChoiceContext ctx)
     {
-        foreach (var card in GetStasisCards(player).ToList())
+        var stasisCards = player.StasisPile.ToList();
+        foreach (var card in stasisCards)
             await TickCard(card, player, ctx);
         GuardianDisplay.Refresh(player);
     }
@@ -187,7 +166,7 @@ public static class GuardianCmd
     // Gems
     public static List<GemModel> GetAllCombatGems(Player player)
     {
-        return player.GetAllCards()
+        return player.GetAllCombatCards
             .SelectMany(card => card switch
             {
                 IGemCard gem => [gem.GemModel],
@@ -221,38 +200,37 @@ public static class GuardianCmd
             power = player.Creature.GetPower<ModeShiftPower>();
         }
 
-        var modifiedAmount = GuardianHook.ModifyBraceAmount(power!.CombatState, player, amount);
+        var modifiedAmount = GuardianHook.ModifyBraceAmount(power!.CombatState, player, amount, out var modifiers);
+        await GuardianHook.AfterModifyingBraceAmount(power.CombatState, player, modifiedAmount, modifiers);
         power.SetAmount((int)(power.Amount - modifiedAmount), true);
-        while (power.Amount <= 0)
-        {
-            await power.Reset(ctx);
-        }
+        while (power.Amount <= 0) await power.Reset(ctx);
+
+        await GuardianHook.AfterBrace(power.CombatState, player, modifiedAmount);
     }
 
     public static Task Brace(PlayerChoiceContext ctx, CardModel card)
     {
-        return Brace(ctx, card.Owner, card.DynamicVars.Brace().IntValue);
+        return Brace(ctx, card.Owner, card.DynamicVars.Brace.IntValue);
     }
 
     public static async Task AccelerateUntilExit(PlayerChoiceContext ctx, Player player)
     {
-        foreach (var card in GetStasisCards(player).ToList())
-        {
+        var stasisCards = player.StasisPile.ToList();
+        foreach (var card in stasisCards)
             while (GuardianCombatModel.StasisCounter[card] > 0)
             {
                 if (!await TickCard(card, player, ctx)) continue;
                 GuardianDisplay.Refresh(player);
                 return;
             }
-        }
+
         GuardianDisplay.Refresh(player);
     }
-    
+
     public static async Task Accelerate(PlayerChoiceContext ctx, Player player, int amount = 1,
         AccelerateType accelerateType = AccelerateType.First)
     {
-        var cards = GetStasisCards(player).ToList();
-
+        var cards = player.StasisPile.ToList();
         foreach (var card in cards)
         {
             var ticks = accelerateType == AccelerateType.First
@@ -281,22 +259,22 @@ public static class GuardianCmd
     public static Task Accelerate(PlayerChoiceContext ctx, AbstractModel source,
         AccelerateType accelerateType = AccelerateType.First)
     {
-        var player = source.GetCreature().Player;
-        return player == null ? 
-            Task.CompletedTask : 
-            Accelerate(ctx, player, source.GetDynamicVars().Accelerate().IntValue, accelerateType);
+        var player = source.Creature.Player;
+        return player == null
+            ? Task.CompletedTask
+            : Accelerate(ctx, player, source.DynamicVars.Accelerate.IntValue, accelerateType);
     }
 
 
     public static async Task Polish(PlayerChoiceContext ctx, AbstractModel source)
     {
-        var amount = source.GetDynamicVars().Polish().IntValue;
+        var amount = source.DynamicVars.Polish.IntValue;
         await Polish(ctx, source, amount);
     }
 
     public static async Task Polish(PlayerChoiceContext ctx, AbstractModel source, decimal amount)
     {
-        await Polish(ctx, source.GetCreature(), amount, source as CardModel);
+        await Polish(ctx, source.Creature, amount, source as CardModel);
     }
 
     public static async Task Polish(PlayerChoiceContext ctx, Creature target, decimal amount, CardModel? cardSource)
@@ -315,7 +293,7 @@ public static class GuardianCmd
             // Amount of Power and Amount of Polish
             var mod = Math.Min(power.Amount, amount);
             if (mod <= 0) continue;
-            
+
             // Lock in `mod` worth of the temp buff as permanent. If the internal power still exists,
             // leave it untouched -- it already holds the full temp amount, and we're only moving `mod`
             // worth of bookkeeping from "temporary" (tracked by the wrapper `power`) to "permanent"
@@ -324,17 +302,14 @@ public static class GuardianCmd
             if (internalTemporaryPower == null)
                 await PowerCmd.Apply(ctx, temporaryPower.InternallyAppliedPower.ToMutable(), target,
                     mod, target, cardSource, true);
-            
+
             // Shrink the wrapper's own bookkeeping directly, bypassing PowerCmd's hook pipeline.
             // This must NOT go through PowerCmd.ModifyAmount because CustomTemporaryPowerModel hardcodes
             // AllowNegative => true on every temp-power wrapper (Ruby/Tourmaline/etc.), so a 
             // reduction here would be misclassified as a Debuff and, if Artifact is present, 
             // gets blocked and silently eats an Artifact charge for no reason.
-            power.SetAmount((int)(power.Amount - mod), false);
-            if (power.ShouldRemoveDueToAmount())
-            {
-                await PowerCmd.Remove(power);
-            }
+            power.SetAmount((int)(power.Amount - mod));
+            if (power.ShouldRemoveDueToAmount()) await PowerCmd.Remove(power);
         }
     }
 

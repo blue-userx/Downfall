@@ -1,17 +1,18 @@
-﻿using MegaCrit.Sts2.Core.CardSelection;
+﻿using Downfall.DownfallCode.Extensions;
+using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Extensions;
-using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Cards;
-using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using Snecko.SneckoCode.Events;
 using Snecko.SneckoCode.History;
@@ -81,18 +82,15 @@ public static class SneckoCmd
 
     public static bool OverflowActive(CardModel card)
     {
-        return card.Owner.GetHand().Count(e => e != card) >= 5;
+        return card.Owner.Hand.Count(e => e != card) >= 5;
     }
-    
-    public static bool IsOffclass(CardModel card)
-    {
-        return card.VisualCardPool != card.Owner.Character.CardPool;
-    }
+
 
     public static bool IsDebuff(CardModel card)
     {
         return card.DynamicVars.Values.Any(IsDebuffPowerVar) &&
-               card.TargetType is not (TargetType.Self or TargetType.AllAllies or TargetType.AnyPlayer or TargetType.Osty or TargetType.AnyAlly);
+               card.TargetType is not (TargetType.Self or TargetType.AllAllies or TargetType.AnyPlayer
+                   or TargetType.Osty or TargetType.AnyAlly);
     }
 
     private static bool IsDebuffPowerVar(DynamicVar v)
@@ -111,47 +109,22 @@ public static class SneckoCmd
 
     public static async Task GetGift(Player player, Gift gift, int amount = 3)
     {
-        var sneckoCards = SneckoModel.GetRewardSneckoCards(player);
-        var cards = sneckoCards.Where(gift.Matches)
-            .TakeRandom(amount, player.RunState.Rng.CombatCardGeneration)
-            .Select(e => e.ToMutable())
-            .ToList();
-        foreach (var cardChoice in cards)
-        {
-            player.RunState.AddCard(cardChoice, player);
-            if (gift.IsUpgraded) cardChoice.UpgradeInternal();
-        }
+        var options = SneckoModel.GetRewardOptions(player, gift.Matches);
+        var cards = CardFactory.CreateForReward(player, amount, options).Select(e => e.Card).ToList();
+        if (gift.IsUpgraded)
+            foreach (var card in cards)
+                card.UpgradeInternal();
 
-        var choiceId = RunManager.Instance.PlayerChoiceSynchronizer.ReserveChoiceId(player);
-        CardModel? card;
+        // Gift is documented as "get a card reward", so offer it through the actual reward system:
+        // this gets Silver Crucible/DingyRug/etc. modification (RewardsSet.Populate() calls into
+        // CardReward.Populate()), proper MP sync (PlayerChoiceSynchronizer, same as before, just via
+        // the engine's own tested implementation), free TestMode support, and - crucially - the
+        // reward-set stack, so spamming multiple Gift-granting purchases queues extra reward screens
+        // instead of racing to show several at once.
+        var cardReward = new CardReward(cards, CardCreationSource.Other, player, options);
+        await RewardsCmd.OfferCustom(player, [cardReward]);
 
-        if (CardSelectCmd.ShouldSelectLocalCard(player))
-        {
-            var screen = NChooseACardSelectionScreen.ShowScreen(cards, true);
-            if (screen == null)
-            {
-                RunManager.Instance.PlayerChoiceSynchronizer.SyncLocalChoice(
-                    player, choiceId, PlayerChoiceResult.FromIndex(null));
-                return;
-            }
-
-            card = (await screen.CardsSelected()).FirstOrDefault();
-            RunManager.Instance.PlayerChoiceSynchronizer.SyncLocalChoice(
-                player, choiceId, PlayerChoiceResult.FromIndex(card != null ? new int?(cards.IndexOf(card)) : null));
-        }
-        else
-        {
-            var index = (await RunManager.Instance.PlayerChoiceSynchronizer
-                .WaitForRemoteChoice(player, choiceId)).AsIndex();
-            card = index < 0 ? null : cards[index];
-        }
-
-        if (card == null) return;
-
-        var a = await CardPileCmd.Add(card, PileType.Deck);
-        CardCmd.PreviewCardPileAdd(a, 0);
-
-        if (gift.Gold is > 0) await PlayerCmd.GainGold(gift.Gold.Value, player);
+        if (cardReward.SuccessfullySelected && gift.Gold is > 0) await PlayerCmd.GainGold(gift.Gold.Value, player);
     }
 }
 

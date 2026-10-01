@@ -1,6 +1,8 @@
-﻿using MegaCrit.Sts2.Core.CardSelection;
+﻿using Downfall.DownfallCode.Compatibility;
+using MegaCrit.Sts2.Core.CardSelection;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
-using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using Snecko.SneckoCode.Core;
 
@@ -8,11 +10,12 @@ namespace Snecko.SneckoCode.Powers;
 
 public class TrashCanPower : SneckoPowerModel
 {
-    public override async Task BeforeFlushLate(PlayerChoiceContext ctx, Player player)
+    public override async Task BeforeSideTurnEnd(PlayerChoiceContext ctx, CombatSide side,
+        IEnumerable<Creature> participants)
     {
-        if (player != Owner.Player) return;
+        if (!participants.Contains(Owner) || Owner.Player == null) return;
         var prefs = new CardSelectorPrefs(CardSelectorPrefs.ExhaustSelectionPrompt, 0, Amount);
-        (await CardSelectCmd.FromHand(ctx, Owner.Player, prefs, null, this)).ToList()
-            .ForEach(e => CardCmd.Exhaust(ctx, e));
+        var cards = (await CardSelectCmd.FromHand(ctx, Owner.Player, prefs, null, this)).ToList();
+        await cards.ForEachAsync(e => CardCmdCompatibility.Exhaust(ctx, e));
     }
 }

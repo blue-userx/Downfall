@@ -13,9 +13,9 @@ public class Outflare : HexaghostCardModel
 {
     public Outflare() : base(1, CardType.Skill, CardRarity.Common, TargetType.Self)
     {
-        WithBlock(7, 3);
-        this.WithPower<OutflarePower>(1, 1, false);
-        this.WithTip<IntensityPower>();
+        WithBlock(8, 2);
+        WithPower<OutflarePower>(1, 1, false);
+        WithTip<IntensityPower>();
     }
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();

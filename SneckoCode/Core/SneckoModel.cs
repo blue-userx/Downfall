@@ -1,11 +1,12 @@
 ﻿using BaseLib.Abstracts;
-using BaseLib.Utils;
-using MegaCrit.Sts2.Core.Commands;
+using BaseLib.Extensions;
+using Downfall.DownfallCode.Events;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Multiplayer.Serialization;
+using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Snecko.SneckoCode.Interfaces;
 
@@ -13,48 +14,59 @@ namespace Snecko.SneckoCode.Core;
 
 public class SneckoModel() : CustomSingletonModel(HookType.Run)
 {
-    public static SavedSpireField<Player, List<ModelId>> SneckoPools =
-        new(() => [], "SneckoPools")
-        {
-            Serializer = (list, writer) => writer.WriteFullModelIdList(list),
-            Deserializer = reader => reader.ReadFullModelIdList()
-        };
-
-    private static void SetSneckoPools(Player player, IEnumerable<CardPoolModel> pools)
+    public static IEnumerable<CharacterModel> GetSneckoCharacterModels(Player player)
     {
-        var pool = SneckoPools.Get(player);
-        if (pool is null) return;
-        pool.Clear();
-        pool.AddRange(pools.Select(e => e.Id));
+        // Each ISneckoPoolSupplier (SneckoChoice, PrismaticSnecko, ...) contributes the character
+        // pool(s) it grants - usually one, but Prismatic Snecko contributes every character at once.
+        return MyHookUtils.Collect<ISneckoPoolSupplier, IEnumerable<CharacterModel>>(null,
+                supplier => supplier.AddSneckoChars(), MyHookUtils.HookScope.Run, player.RunState)
+            .SelectMany(c => c)
+            .Distinct();
     }
 
+
+    // Card pools of the characters Snecko currently borrows from; every other character's pool when it borrows from none.
     private static IEnumerable<CardPoolModel> GetSneckoPools(Player player)
     {
-        return SneckoPools.Get(player)?.Select(ModelDb.GetById<CardPoolModel>) ?? [];
+        var pools = GetSneckoCharacterModels(player).Select(e => e.CardPool).ToList();
+        return pools.Count > 0
+            ? pools
+            : ModelDb.AllCharacters.Where(e => e != player.Character).Select(c => c.CardPool).ToList();
     }
 
-    public static IEnumerable<CardModel> GetSneckoCards(Player player)
+    // Unfiltered: the combat and reward pipelines each apply their own filtering (multiplayer constraint, rarity, ...).
+    private static IEnumerable<CardModel> GetSneckoCards(Player player)
     {
-
-        var cards = GetSneckoPools(player).SelectMany(e => CardFactory.FilterForPlayerCount(player.RunState, e.AllCards));
-        if (cards != null && cards.Any())
-        {
-            return cards;
-        }
-        return ModelDb.AllCharacters
-            .Where(e => e != player.Character)
-            .ToList().Select(c => c.CardPool).ToList().SelectMany(e => e.AllCards);
+        return GetSneckoPools(player).SelectMany(e => e.AllCards);
     }
 
-    public static IEnumerable<CardModel> GetRewardSneckoCards(Player player, Func<CardModel, bool>? filter = null)
+    // Same-rarity replacement for `original` from the borrowed pools, or null when there is none. Built here rather than
+    // via CardTransformation's option list: the game's transformation rules always narrow those options to
+    // Common/Uncommon/Rare, which would leave Basic/Ancient/Event cards without a replacement.
+    public static CardModel? CreateTransformationReplacement(Player player, CardModel original, Rng rng)
     {
-        var cards = GetSneckoCards(player);
-        if (filter is not null) cards = cards.Where(filter);
-        return CardFactory.FilterForPlayerCount(player.RunState,
-            CardFactory.FilterForCombat(cards));
+        var options = GetSneckoPools(player)
+            .SelectMany(p => p.GetUnlockedCards(player.UnlockState, player.RunState.CardMultiplayerConstraint))
+            .Where(c => c.Id != original.Id && c.CanBeGeneratedInCombat && c.Rarity == original.Rarity)
+            .ToList();
+        var template = rng.NextItem(options);
+        return template == null ? null : original.CardScope?.CreateCard(template, player);
     }
 
-    public static IEnumerable<CardModel> GetCombatSneckoCards(Player player, int amount, Player? forPlayer = null, Func<CardModel, bool>? filter = null)
+    // Reward pipeline (rarity odds, upgrade roll, multiplayer constraint, reward-modifying relics) over the borrowed pools.
+    public static CardCreationOptions GetRewardOptions(Player player, Func<CardModel, bool>? filter = null)
+    {
+        return CardCreationOptions.ForNonCombatWithDefaultOdds(GetSneckoPools(player).ToList(), filter);
+    }
+
+    public static IEnumerable<CardModel> CreateRewardSneckoCards(Player player, int amount,
+        Func<CardModel, bool>? filter = null)
+    {
+        return CardFactory.CreateForReward(player, amount, GetRewardOptions(player, filter)).Select(e => e.Card);
+    }
+
+    public static IEnumerable<CardModel> GetCombatSneckoCards(Player player, int amount, Player? forPlayer = null,
+        Func<CardModel, bool>? filter = null)
     {
         forPlayer ??= player;
         var cards = GetSneckoCards(player);
@@ -65,7 +77,6 @@ public class SneckoModel() : CustomSingletonModel(HookType.Run)
             player.RunState.Rng.CombatCardGeneration);
     }
 
-
     public override async Task AfterCardChangedPiles(CardModel card, PileType oldPileType, AbstractModel? source)
     {
         if (card.Pile?.Type == PileType.Deck &&
@@ -74,25 +85,11 @@ public class SneckoModel() : CustomSingletonModel(HookType.Run)
     }
 
 
-    public override async Task AfterActEntered()
+    public override Task AfterRoomEntered(AbstractRoom room)
     {
-        var state = RunManager.Instance.State;
-        if (state is not { CurrentActIndex: 0 }) return;
-
-        var sneckos = state.Players.Where(e => e.Character is Snecko).ToList();
-        var choiceIds = sneckos.ToDictionary(
-            snecko => snecko,
-            snecko => Enumerable.Range(0, 3)
-                .Select(_ => RunManager.Instance.PlayerChoiceSynchronizer.ReserveChoiceId(snecko))
-                .ToArray()
-        );
-        var tasks = sneckos.Select(async snecko =>
-        {
-            var pools = await SneckoPoolSelection.DoOffclassSelection(snecko, state, choiceIds[snecko]);
-            return (snecko, pools);
-        });
-        var results = await Task.WhenAll(tasks);
-        foreach (var (snecko, pools) in results)
-            SetSneckoPools(snecko, pools);
+        var state = RunManager.Instance.State!;
+        if (state.Act.ActNumber() > 1 || state.ActFloor > 1) return Task.CompletedTask;
+        SneckoPoolSelection.RunActEntry(RunManager.Instance.State!);
+        return Task.CompletedTask;
     }
 }

@@ -7,14 +7,11 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
 namespace Hermit.HermitCode.Cards.Rare;
 
-public class Deathwish: HermitCardModel
+public class Deathwish : HermitCardModel
 {
- 
-
     public Deathwish() : base(1, CardType.Power, CardRarity.Rare, TargetType.Self)
     {
-        WithCostUpgradeBy(-1);
-        this.WithPower<DeathwishPower>(1, false);
+        WithPower<DeathwishPower>(3, 2, false);
         WithTip(HermitKeywords.DeadOn);
     }
 

@@ -1,3 +1,4 @@
+﻿using Downfall.DownfallCode.Extensions;
 using BaseLib.Abstracts;
 using Guardian.GuardianCode.Core;
 using MegaCrit.Sts2.Core.Combat;
@@ -12,16 +13,14 @@ public class StasisEnginePower : GuardianPowerModel, IHasSecondAmount
 {
     private int _triggers;
 
+    
 
-    public string GetSecondAmount()
-    {
-        return $"{_triggers}/3";
-    }
+    protected override int? SecondAmount => 3 - _triggers;
 
     public override async Task AfterCardPlayedLate(PlayerChoiceContext choiceContext, CardPlay cardPlay)
     {
         if (_triggers >= 3 || cardPlay.Card.Owner != Owner.Player ||
-            cardPlay.Card.EnergyCost.GetResolved() != 0) return;
+            !cardPlay.Card.EnergyCost.Is0Cost) return;
         _triggers++;
         InvokeDisplayAmountChanged();
         if (_triggers >= 3)

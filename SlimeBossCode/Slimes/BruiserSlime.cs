@@ -1,31 +1,35 @@
-﻿using MegaCrit.Sts2.Core.Animation;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
-using MegaCrit.Sts2.Core.Commands;
+﻿using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.ValueProps;
 using SlimeBoss.SlimeBossCode.Extensions;
+using SlimeBoss.SlimeBossCode.Powers;
 
 namespace SlimeBoss.SlimeBossCode.Slimes;
 
 public class BruiserSlime : SlimeModel
 {
-    public override SlimeType SlimeType => SlimeType.Normal;
-
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new DamageVar(3, ValueProp.Move),
-        new RepeatVar(2)
+        new DamageVar(3, DamageProps.nonCardUnpowered)
     ];
 
-
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
+    protected override string? SkinName => "attack";
+    
+    private Creature? GetHighestHpOpponent()
     {
-        return SetupAnimationState(controller, "idle", hitName: "hit");
+        return CombatState.GetOpponentsOf(Creature).Where(e => e.IsHittable).MaxBy(e => e.CurrentHp);
     }
 
-    public override async Task Command(PlayerChoiceContext ctx)
+    public override async Task Command(PlayerChoiceContext ctx, Creature? forcedTarget = null)
     {
-        await DamageCmd.Attack(DynamicVars.Damage.BaseValue).FromSlime(this).WithHitCount(DynamicVars.Repeat.IntValue).TargetingRandomOpponents(CombatState).Execute(ctx);
+        var attack = DamageCmd.Attack(DynamicVars.Damage.BaseValue).FromSlime(this);
+        var target = forcedTarget ?? GetHighestHpOpponent();
+        if (target == null) return;
+        attack = PetOwner.HasPower<MafiosoPower>()
+            ? attack.TargetingAllOpponents(CombatState)
+            : attack.Targeting(target);
+        await attack.Execute(ctx);
     }
 }

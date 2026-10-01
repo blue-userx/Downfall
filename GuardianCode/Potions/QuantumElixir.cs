@@ -1,6 +1,8 @@
-﻿using Guardian.GuardianCode.Core;
-using BaseLib.Utils;
+﻿using BaseLib.Utils;
+using Downfall.DownfallCode.Artists;
+using Guardian.GuardianCode.Core;
 using Guardian.GuardianCode.CustomEnums;
+using Guardian.GuardianCode.Extensions;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -19,6 +21,8 @@ public class QuantumElixir : GuardianPotionModel
         WithTip(GuardianTip.Stasis);
     }
 
+    protected override Artist Artist => Artist.Get<Fulgur>();
+    
     protected override async Task OnUse(PlayerChoiceContext ctx, Creature? target)
     {
         var rng = Owner.RunState.Rng.CombatCardSelection;
@@ -26,16 +30,18 @@ public class QuantumElixir : GuardianPotionModel
         var cards = Owner.Character.CardPool
             .GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint)
             .Where(c => c.Rarity != CardRarity.Token).ToList();
-        
+
         while (GuardianCmd.CanPutIntoStasis(Owner, silent: true))
         {
-            var countBefore = GuardianCmd.GetStasisCount(Owner);
+            var countBefore = Owner.StasisPile.Count;
 
             var choices = CardFactory.GetDistinctForCombat(Owner, cards, DynamicVars.Cards.IntValue, rng).ToList();
             var selected = await CardSelectCmd.FromChooseACardScreen(ctx, choices, Owner);
             if (selected == null) break;
             await GuardianCmd.PutIntoStasis(selected, ctx, this);
-            if (GuardianCmd.GetStasisCount(Owner) < countBefore + 1)
+
+            var countAfter = Owner.StasisPile.Count;
+            if (countAfter < countBefore + 1)
                 return;
         }
     }

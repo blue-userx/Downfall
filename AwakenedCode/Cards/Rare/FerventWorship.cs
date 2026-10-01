@@ -1,11 +1,10 @@
-﻿using Awakened.AwakenedCode.Cards.Token;
-using Awakened.AwakenedCode.Core;
+﻿using Awakened.AwakenedCode.Core;
 using Awakened.AwakenedCode.Powers;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Awakened.AwakenedCode.Cards.Rare;
 
@@ -14,16 +13,17 @@ public class FerventWorship : AwakenedCardModel
 {
     public FerventWorship() : base(1, CardType.Power, CardRarity.Rare, TargetType.Self)
     {
-        WithEnergyTip();
-        this.WithTip<Ceremony>();
-        WithTip(StaticHoverTip.ReplayStatic);
+        WithPower<CuriosityPower>(1);
         WithCostUpgradeBy(-1);
+        WithPower<FerventWorshipPower>(1, false);
+        WithTip<StrengthPower>();
     }
 
     protected override Artist Artist => Artist.Get<Chimedragon>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.ApplySelf<FerventWorshipPower>(ctx, this, 1);
+        await CommonActions.ApplySelf<CuriosityPower>(ctx, this);
+        await CommonActions.ApplySelf<FerventWorshipPower>(ctx, this);
     }
 }

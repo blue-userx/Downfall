@@ -4,7 +4,6 @@ using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Models;
 
 namespace Collector.CollectorCode.Cards.Uncommon;
 
@@ -13,24 +12,18 @@ public class Soulforge : CollectorCardModel
 {
     public Soulforge() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
-        WithCards(1, 1);
+        //WithKeyword(CollectorKeyword.Pyre);
         WithKeyword(CardKeyword.Exhaust);
+        WithCards(1, 1);
     }
 
     protected override Artist Artist => Artist.Get<Thelethargicweirdo>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var result = await CollectorCmd.DrawCollected(ctx, Owner);
-        if (!result.success) return;
-        List<CardModel> cards = [];
-        for (var i = 0; i < DynamicVars.Cards.IntValue; i++)
-        {
-            var copy = result.cardAdded.CreateClone();
-            copy.UpgradeInternal();
-            cards.Add(copy);
+        await CommonActions.Draw(this, ctx);
+        foreach (var card in Owner.Hand){
+            CardCmd.Upgrade(card);
         }
-
-        await CardPileCmd.AddGeneratedCardsToCombat(cards, PileType.Hand, Owner);
     }
 }

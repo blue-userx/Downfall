@@ -1,12 +1,10 @@
-using System.Reflection;
 using BaseLib.Abstracts;
 using BaseLib.Patches.Saves;
 using BaseLib.Utils;
-using Downfall.DownfallCode;
 using Downfall.DownfallCode.Localization;
 using Downfall.DownfallCode.Patches;
 using Downfall.DownfallCode.Utils;
-using Godot;
+using Downfall.DownfallCode.Voting;
 using Guardian.GuardianCode.Cards;
 using Guardian.GuardianCode.Core;
 using Guardian.GuardianCode.Interfaces;
@@ -21,7 +19,7 @@ using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 namespace Guardian.GuardianCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class GuardianMainFile : Node
+public static class GuardianMainFile
 {
     public const string ModId = "Guardian";
 
@@ -34,11 +32,17 @@ public partial class GuardianMainFile : Node
         RegisterGemSave();
         CardDescriptionRegistry.Register<GuardianCardModel>(DescriptionInjectionPoint.BelowMainText,
             new GemDescriptionSource());
-        
+
         BundledSubmodLocRegistry.Register(ModId);
+        VotingPoolRegistry.Register<GuardianCardPool>(VotingPool.Guardian, ModId);
 
         TranscendenceHooks.OnTransformed += CopyGemsToTranscendence;
         CombatUiHooks.Register(GuardianCombatModel.SetupGuardianCombatUi);
+
+        FormBoneRegistry.RegisterVoidForm<Core.Guardian>("head");
+        FormBoneRegistry.RegisterSerpentForm<Core.Guardian>("body");
+        FormBoneRegistry.RegisterReaperForm<Core.Guardian>("head");
+        FormBoneRegistry.RegisterEchoForm<Core.Guardian>("head");
     }
 
     private static void CopyGemsToTranscendence(CardModel starter, CardModel result)
@@ -53,7 +57,7 @@ public partial class GuardianMainFile : Node
             .ToList();
 
         targetCard.AddGems(gemClones);
-    } 
+    }
 
     private static void RegisterGemSave()
     {
@@ -69,7 +73,8 @@ public partial class GuardianMainFile : Node
             (card, gemIds) =>
             {
                 if (gemIds == null) return;
-                var existingGemIds = CardModifier.DirectModifiers(card).OfType<GemModel>().Select(g => g.Id).ToHashSet();
+                var existingGemIds =
+                    CardModifier.DirectModifiers(card).OfType<GemModel>().Select(g => g.Id).ToHashSet();
                 foreach (var gemId in gemIds)
                 {
                     if (existingGemIds.Contains(gemId))

@@ -1,13 +1,18 @@
-﻿using Automaton.AutomatonCode.Extensions;
+﻿using Automaton.AutomatonCode.Events;
+using Automaton.AutomatonCode.Extensions;
 using Automaton.AutomatonCode.Piles;
 using Automaton.AutomatonCode.Vfx;
 using Downfall.DownfallCode.Commands;
+using Godot;
 using MegaCrit.Sts2.Core.CardSelection;
+using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Combat.History.Entries;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Models;
 
@@ -19,98 +24,171 @@ public class StashCmd
 
     public static LocString StashSelectionPrompt => new("card_selection", "AUTOMATON-TO_STASH");
 
+    public static LocString FULL_STASH => new("combat_messages", "FULL_STASH");
+
     private static int RemainingSpace(Player player)
-        => Math.Max(0, MaxStashSize - player.GetStash().Count);
+    {
+        return Math.Max(0, MaxStashSize - player.StashPile.Count);
+    }
+
+    public static bool IsFull(Player player, bool silent = false)
+    {
+        var full = RemainingSpace(player) == 0;
+        if (!silent && full) NotifyFullStash(player);
+        return full;
+    }
+
+    private static void NotifyFullStash(Player player)
+    {
+        if (LocalContext.IsMe(player)) ThinkCmd.Play(FULL_STASH, player.Creature);
+    }
+
+    // ---- the one and only stash flow ----------------------------------------
+    // Splits `cards` by remaining space, stashes what fits, discards the rest,
+    // and fires the "full stash" ping on overflow. `place` is the primitive that
+    // actually puts cards into a pile (differs for live vs generated cards).
+    private static async Task Run(
+        PlayerChoiceContext ctx,
+        Player player,
+        List<CardModel> cards,
+        Func<List<CardModel>, PileType, Task<IReadOnlyList<CardPileAddResult>>> place)
+    {
+        if (cards.Count == 0)
+            return;
+
+        //NStashDisplay.EnsureFor(player);
+
+        var space = RemainingSpace(player);
+        var toStash = cards.Take(space).ToList();
+        var overflow = cards.Skip(space).ToList();
+        if (LocalContext.IsMe(player))
+            Callable.From(() => NStashPile.RevealFor(player)).CallDeferred();
+        
+        if (toStash.Count > 0) await place(toStash, StashPile.Stash);
+
+
+        if (overflow.Count > 0)
+        {
+            NotifyFullStash(player);
+            await place(overflow, PileType.Discard);
+        }
+
+        await AutomatonHook.AfterCardsStashed(player.Creature.CombatState, ctx, player, toStash, overflow);
+    }
+
+    // Placement primitive for cards already registered in combat.
+    private static Task<IReadOnlyList<CardPileAddResult>> PlaceExisting(List<CardModel> cards, PileType target)
+    {
+        return CardPileCmd.Add(cards, target);
+    }
+
+    // ---- entry points -------------------------------------------------------
+
+    public static Task Stash(PlayerChoiceContext ctx, CardModel card)
+    {
+        return Run(ctx, card.Owner, [card], PlaceExisting);
+    }
+
+    public static Task Stash(PlayerChoiceContext ctx, Player player, IEnumerable<CardModel> cards)
+    {
+        return Run(ctx, player, cards.ToList(), PlaceExisting);
+    }
+
+    public static Task Stash<TCard>(PlayerChoiceContext ctx, Player player, int amount = 1, Player? creator = null)
+        where TCard : CardModel
+    {
+        creator ??= player;
+        var cards = BuildCards<TCard>(player, amount);
+        return Run(ctx, player, cards, async (list, target)
+            => await CardPileCmd.AddGeneratedCardsToCombat(list, target, creator));
+    }
+
+    // Creation loop lifted out of DownfallCardCmd.GiveCards.
+    private static List<CardModel> BuildCards<TCard>(Player player, int amount, bool upgraded = false)
+        where TCard : CardModel
+    {
+        var list = new List<CardModel>();
+        if (amount <= 0) return list;
+
+        var model = ModelDb.Card<TCard>();
+        for (var i = 0; i < amount; i++)
+        {
+            var card = (TCard)player.Creature.CombatState!.CreateCard(model, player);
+            if (upgraded) card.UpgradeInternal();
+            list.Add(card);
+        }
+
+        return list;
+    }
+
+    // ---- selection helpers (unchanged) --------------------------------------
 
     public static async Task StashUpTo(PlayerChoiceContext ctx, Player player, int amount, AbstractModel source)
     {
         var prefs = new CardSelectorPrefs(StashSelectionPrompt, 0, amount);
         var cards = await CardSelectCmd.FromHand(ctx, player, prefs, null, source);
-        await Stash(player, cards);
+        await Stash(ctx, player, cards);
     }
 
     public static async Task StashFromHand(CardModel source, PlayerChoiceContext ctx)
     {
-        var amount = source.DynamicVars["Stash"].IntValue;
-        var prefs = new CardSelectorPrefs(StashSelectionPrompt, amount);
+        var requested = source.DynamicVars.Stash.IntValue;
+        var amount = Math.Min(requested, source.Owner.Hand.Count);
+        var prefs = new CardSelectorPrefs(StashSelectionPrompt, amount)
+        {
+            RequireManualConfirmation = amount > 1
+        };
         var cards = await CardSelectCmd.FromHand(ctx, source.Owner, prefs, null, source);
-        await Stash(source.Owner, cards);
+        await Stash(ctx, source.Owner, cards);
     }
 
     public static async Task StashFromDraw(CardModel source, PlayerChoiceContext ctx)
     {
-        var amount = source.DynamicVars["Stash"].IntValue;
+        var amount = source.DynamicVars.Stash.IntValue;
         var prefs = new CardSelectorPrefs(StashSelectionPrompt, amount);
         var cards = await CardSelectCmd.FromCombatPile(ctx, PileType.Draw.GetPile(source.Owner), source.Owner, prefs);
-        await Stash(source.Owner, cards);
+        await Stash(ctx, source.Owner, cards);
+    }
+    
+    public static async Task StashFromPiles(CardModel source, PlayerChoiceContext ctx, Func<CardModel,bool>? filter = null, 
+        params PileType[] pileTypes)
+    {
+        var amount = source.DynamicVars.Stash.IntValue;
+        var prefs = new CardSelectorPrefs(StashSelectionPrompt, amount);
+        var cards = await DownfallCardSelectionCmd.MulitPileSelect(ctx, source.Owner, prefs, filter, pileTypes);
+        await Stash(ctx, source.Owner, cards);
+    }
+    
+
+    // ---- draw-from-stash (unchanged) ----------------------------------------
+
+    public static Task<IReadOnlyList<CardPileAddResult>> DrawFromStash(PlayerChoiceContext ctx, CardModel card)
+    {
+        return DrawFromStash(ctx, card.Owner, card.DynamicVars.Cards.IntValue);
     }
 
-    public static LocString FULL_STASH => new LocString("combat_messages", "FULL_STASH");
-
-    public static async Task Stash<TCard>(Player player, int amount = 1)
-        where TCard : CardModel
+    public static async Task<IReadOnlyList<CardPileAddResult>> DrawFromStash(PlayerChoiceContext ctx, Player player,
+        int n = 1)
     {
-        NStashDisplay.EnsureFor(player);     
-        var toStash = Math.Min(amount, RemainingSpace(player));
-
-        if (toStash > 0)
-            await DownfallCardCmd.GiveCards<TCard>(player, StashPile.Stash, toStash);
-
-        var overflow = amount - toStash;
-        if (overflow > 0)
+        var cards = player.StashPile;
+        var combatState = player.Creature.CombatState;
+        if (combatState == null) return [];
+        if (!Hook.ShouldDraw(combatState, player, true, out var modifier))
         {
-            if (LocalContext.IsMe(player)) ThinkCmd.Play(FULL_STASH, player.Creature);
-            await DownfallCardCmd.GiveCards<TCard>(player, PileType.Discard, overflow);
+            if (modifier == null) return [];
+            await Hook.AfterPreventingDraw(combatState, modifier);
+            return [];
         }
-            
-    }
-
-    public static async Task Stash(CardModel card)
-    {
-        NStashDisplay.EnsureFor(card.Owner);     
-        if (RemainingSpace(card.Owner) > 0)
-            await CardPileCmd.Add(card, StashPile.Stash);
-        else
+        var result = await CardPileCmd.Add(cards.Take(n).ToList(), PileType.Hand);
+        foreach (var cardPileAddResult in result)
         {
-            if (LocalContext.IsMe(card.Owner)) ThinkCmd.Play(FULL_STASH, card.Owner.Creature);
-            await CardPileCmd.Add(card, PileType.Discard);
+            var drawn = cardPileAddResult.cardAdded;
+            CombatManager.Instance.History.Add(combatState,
+                new CardDrawnEntry(drawn, combatState.RoundNumber, combatState.CurrentSide, true,
+                    CombatManager.Instance.History, combatState.Players));
+            await Hook.AfterCardDrawn(combatState, ctx, drawn, true);
         }
-           
-    }
 
-    public static async Task Stash(Player player, IEnumerable<CardModel> cards)
-    {
-        var list = cards.ToList();
-        if (list.Count == 0)
-            return;
-
-        NStashDisplay.EnsureFor(player);     
-        var space = RemainingSpace(player);
-        var toStash = list.Take(space).ToList();
-        var overflow = list.Skip(space).ToList();
-
-        if (toStash.Count > 0)
-            await CardPileCmd.Add(toStash, StashPile.Stash);
-
-        if (overflow.Count > 0)
-        {
-            if (LocalContext.IsMe(player)) ThinkCmd.Play(FULL_STASH, player.Creature);
-            await CardPileCmd.Add(overflow, PileType.Discard);
-        }
-           
-    }
-
-
-    public static async Task DrawFromStash(CardModel card)
-    {
-        var cards = card.Owner.GetStash();
-        var n = card.DynamicVars.Cards.IntValue;
-        await CardPileCmd.Add(cards.Take(n).ToList(), PileType.Hand);
-    }
-
-    public static async Task<IReadOnlyList<CardPileAddResult>> DrawFromStash(Player player, int n = 1)
-    {
-        var cards = player.GetStash();
-        return await CardPileCmd.Add(cards.Take(n).ToList(), PileType.Hand);
+        return result;
     }
 }

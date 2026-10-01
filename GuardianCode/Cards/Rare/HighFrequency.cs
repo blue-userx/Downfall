@@ -1,6 +1,7 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.Compatibility;
 using Downfall.DownfallCode.CustomEnums;
 using Guardian.GuardianCode.Core;
 using Guardian.GuardianCode.CustomEnums;
@@ -22,19 +23,20 @@ public class HighFrequency : GuardianCardModel
 
     protected override Artist Artist => Artist.Get<GoofballMcgee>();
     public override bool CanBeGeneratedInCombat => false;
+
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var card = (await DownfallCardCmd.SelectFromHand(ctx, DownfallCardSelectorPrefs.StasisSelectionPrompt, this))
+        var card = (await DownfallCardSelectionCmd.SelectFromHand(ctx, DownfallCardSelectorPrefs.StasisSelectionPrompt, this))
             .FirstOrDefault();
         if (card == null) return;
 
         while (GuardianCmd.CanPutIntoStasis(Owner, silent: true))
         {
             var a = card.CreateClone();
-            await CardPileCmd.Add(a, PileType.Play);
+            await CardPileCmd.AddGeneratedCardToCombat(a, PileType.Play, Owner);
             await GuardianCmd.PutIntoStasis(a, ctx, this, true);
         }
 
-        await CardCmd.Exhaust(ctx, card);
+        await CardCmdCompatibility.Exhaust(ctx, card);
     }
 }

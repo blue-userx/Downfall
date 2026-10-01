@@ -1,130 +1,162 @@
-﻿using System.Reflection;
-using System.Runtime.CompilerServices;
-using Godot;
-using MegaCrit.Sts2.addons.mega_text;
-using MegaCrit.Sts2.Core.Combat;
+﻿using Godot;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
-using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.HoverTips;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using MegaCrit.Sts2.Core.Nodes.Screens;
-using MegaCrit.Sts2.Core.Nodes.Screens.Capstones;
-using MegaCrit.Sts2.Core.Nodes.Vfx;
 
 namespace Downfall.DownfallCode.Utils.UI;
 
 public abstract partial class NCustomCombatCardPile : NCombatCardPile
 {
-    private static readonly FieldInfo PileField =
-        typeof(NCombatCardPile).GetField("_pile", BindingFlags.NonPublic | BindingFlags.Instance)!;
-
-    private static readonly FieldInfo CurrentCountField =
-        typeof(NCombatCardPile).GetField("_currentCount", BindingFlags.NonPublic | BindingFlags.Instance)!;
-
+    private Vector2 _cachedShow;
+    private bool _hasCachedShow;
     private Tween? _ownBumpTween;
-
-    private Player? _player;
+    private Tween? _revealTween;
 
     protected abstract override PileType Pile { get; }
-    public abstract Func<Player, bool> CanUsePile { get; }
     public abstract string ScenePath { get; }
     protected abstract Vector2 HideOffset { get; }
-
     protected abstract Vector2 HoverTipOffset { get; }
+    protected abstract Vector2 ButtonOffsets { get; }
+
+    protected virtual IEnumerable<IHoverTip> ExtraHoverTips => [];
     protected abstract HoverTip BuildHoverTip();
     protected abstract LocString BuildEmptyPileMessage();
+
+    protected virtual bool StartHidden(Player player) => false;
+    protected virtual bool StartParkedOffScreen(Player player) => false;
+    protected virtual void AfterInitialize(Player player) { }
+    protected virtual bool SelfPositions => false;
 
     public override void _Ready()
     {
         ConnectSignals();
         _emptyPileMessage = BuildEmptyPileMessage();
+
+        var size = Size;
+        OffsetLeft = ButtonOffsets.X;
+        OffsetTop = ButtonOffsets.Y;
+        OffsetRight = ButtonOffsets.X + size.X;
+        OffsetBottom = ButtonOffsets.Y + size.Y;
+
+        if (!SelfPositions)
+        {
+            _cachedShow = Position;
+            _hasCachedShow = true;
+            ApplyAnimPositions();
+        }
     }
 
-    protected override void SetAnimInOutPositions()
+    public override void _EnterTree()
     {
-        _showPosition = Position;
-        _hidePosition = Position + HideOffset;
-    }
-
-    public void RefreshAnimPositions()
-    {
-        _showPosition = Position;
-        _hidePosition = Position + HideOffset;
+        base._EnterTree();
+        // Disconnect base AddCard/RemoveCard listeners registered by base._EnterTree()
+        if (_pile != null)
+        {
+            _pile.CardAddFinished -= AddCard;
+            _pile.CardRemoveFinished -= RemoveCard;
+        }
     }
 
     public override void Initialize(Player player)
     {
-        _player = player;
+        base.Initialize(player);
 
-        var pile = Pile.GetPile(player);
-        PileField.SetValue(this, pile);
-
-        var countLabel = GetNode<MegaLabel>("CountContainer/Count");
-
-
-        pile.CardAddFinished += () =>
+        // Disconnect base AddCard/RemoveCard listeners registered by base.Initialize()
+        if (_pile != null)
         {
-            if (!IsInstanceValid(countLabel)) return;
-            UpdateCount(pile.Cards.Count, countLabel);
-        };
-        pile.CardRemoveFinished += () =>
-        {
-            if (!IsInstanceValid(countLabel)) return;
-            UpdateCount(pile.Cards.Count, countLabel);
-        };
+            _pile.CardAddFinished -= AddCard;
+            _pile.CardRemoveFinished -= RemoveCard;
+        }
 
-        UpdateCount(pile.Cards.Count, countLabel);
+        var hidden = StartHidden(player);
+        Visible = !hidden;
+
+        if (!hidden && !SelfPositions)
+        {
+            ApplyAnimPositions();
+            Position = StartParkedOffScreen(player) ? _hidePosition : _showPosition;
+        }
+
+        AfterInitialize(player);
     }
 
-    private void UpdateCount(int count, MegaLabel label)
+    public static Vector2 GetPositionFor<T>() where T : NCustomCombatCardPile
     {
-        CurrentCountField.SetValue(this, count);
-        label.SetTextAutoSize(count.ToString());
+        var btn = GetPileNode<T>();
+        return btn != null ? btn.GlobalPosition + btn.Size * 0.5f : Vector2.Zero;
     }
 
-    protected override void OnRelease()
+    protected static T? GetPileNode<T>() where T : NCustomCombatCardPile
     {
-        base.OnRelease();
+        var container = NCombatRoom.Instance?.Ui._combatPilesContainer;
+        if (container == null || !IsInstanceValid(container)) return null;
+        return container.GetChildren()
+            .OfType<T>()
+            .FirstOrDefault(IsInstanceValid);
+    }
 
-        if (_player == null || !CombatManager.Instance.IsInProgress) return;
+    private void ApplyAnimPositions()
+    {
+        if (SelfPositions) return;
 
-        var pile = Pile.GetPile(_player);
-        if (pile.IsEmpty)
-        {
-            if (NCapstoneContainer.Instance is { InUse: true })
-                NCapstoneContainer.Instance.Close();
+        var show = _hasCachedShow ? _cachedShow : Position;
+        _showPosition = show;
+        _hidePosition = show + HideOffset;
+    }
 
-            var bubble = NThoughtBubbleVfx.Create(
-                _emptyPileMessage.GetFormattedText(), _player.Creature, 2.0);
-            NCombatRoom.Instance?.CombatVfxContainer.AddChildSafely(bubble);
-        }
-        else if (NCapstoneContainer.Instance?.CurrentCapstoneScreen is NCardPileScreen screen
-                 && screen.Pile == pile)
+    public virtual void PlayAnimOut() { AnimOut(); }
+
+    protected override void SetAnimInOutPositions()
+    {
+        ApplyAnimPositions();
+    }
+
+    public void RefreshAnimPositions()
+    {
+        ApplyAnimPositions();
+    }
+
+    public void RefreshCount()
+    {
+        if (_pile == null || !IsInstanceValid(_countLabel)) return;
+        _currentCount = _pile.Cards.Count;
+        _countLabel.SetTextAutoSize(_currentCount.ToString());
+    }
+
+    protected void Reveal()
+    {
+        RefreshCount();
+        if (SelfPositions)
         {
-            NCapstoneContainer.Instance.Close();
-        }
-        else
-        {
-            NCardPileScreen.ShowScreen(pile, Hotkeys);
-        }
+            AnimIn();
+            return;
+        }   
+        if (Visible && Position == _showPosition) return;
+        Visible = true;
+
+        ApplyAnimPositions();
+        Position = _hidePosition;
+
+        _revealTween?.Kill();
+        _revealTween = CreateTween();
+        _revealTween.SetPauseMode(Tween.TweenPauseMode.Process);
+        _revealTween.TweenProperty(this, "position", _showPosition, 0.4)
+            .SetEase(Tween.EaseType.Out)
+            .SetTrans(Tween.TransitionType.Expo);
     }
 
     protected override void OnFocus()
     {
         NHoverTipSet.Remove(this);
-
-        var tip = NHoverTipSet.CreateAndShow(this, BuildHoverTip());
-        if (tip != null) tip.GlobalPosition = GlobalPosition + HoverTipOffset;
-
+        NHoverTipSet.CreateAndShow(this, [BuildHoverTip(), ..ExtraHoverTips], HoverTipAlignment.Right);
 
         _ownBumpTween?.Kill();
         _ownBumpTween = CreateTween();
-        _ownBumpTween.TweenProperty(GetNode<Control>("Icon"), "scale",
-            Vector2.One * 1.25f, 0.05);
+        _ownBumpTween.TweenProperty(_icon, "scale", Vector2.One * 1.25f, 0.05);
     }
 
     protected override void OnUnfocus()
@@ -133,49 +165,9 @@ public abstract partial class NCustomCombatCardPile : NCombatCardPile
 
         _ownBumpTween?.Kill();
         _ownBumpTween = CreateTween().SetParallel();
-        _ownBumpTween
-            .TweenProperty(GetNode<Control>("Icon"), "scale", Vector2.One, 0.5)
-            .SetEase(Tween.EaseType.Out)
-            .SetTrans(Tween.TransitionType.Expo);
-        _ownBumpTween
-            .TweenProperty(GetNode<Control>("Icon"), "modulate", Colors.White, 0.5)
-            .SetEase(Tween.EaseType.Out)
-            .SetTrans(Tween.TransitionType.Expo);
-    }
-}
-
-internal static class CombatPileButtonRegistry
-{
-    private static List<Type>? _types;
-
-    internal static IReadOnlyList<Type> Types => _types ??= Discover();
-
-    private static List<Type> Discover()
-    {
-        var results = new List<Type>();
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            IEnumerable<Type> types;
-            try
-            {
-                types = assembly.GetTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                types = ex.Types.Where(t => t != null)!;
-            }
-
-            results.AddRange(types.Where(t =>
-                t is { IsClass: true, IsAbstract: false } &&
-                t.IsSubclassOf(typeof(NCustomCombatCardPile))));
-        }
-
-        return results;
-    }
-
-    internal static (string scenePath, Func<Player, bool> canUse) ReadMetadata(Type type)
-    {
-        var probe = (NCustomCombatCardPile)RuntimeHelpers.GetUninitializedObject(type);
-        return (probe.ScenePath, probe.CanUsePile);
+        _ownBumpTween.TweenProperty(_icon, "scale", Vector2.One, 0.5)
+            .SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Expo);
+        _ownBumpTween.TweenProperty(_icon, "modulate", Colors.White, 0.5)
+            .SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Expo);
     }
 }

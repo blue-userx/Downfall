@@ -1,9 +1,9 @@
 using BaseLib.Utils;
+using Downfall.DownfallCode.CustomEnums;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using Snecko.SneckoCode.Core;
-using Snecko.SneckoCode.Extensions;
 using Snecko.SneckoCode.Interfaces;
 using Snecko.SneckoCode.Powers;
 
@@ -14,12 +14,13 @@ public class SnakeEyes : SneckoCardModel, IHasGift
 {
     public SnakeEyes() : base(1, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
-        this.WithGift(new Gift
+        WithGift(new Gift
         {
             Rarity = CardRarity.Rare,
             Type = CardType.Skill
         });
-        this.WithPower<SnakeEyesPower>(1, 1, false);
+        WithPower<SnakeEyesPower>(1, 1, false);
+        WithTip(DownfallTip.Offclass);
     }
 
     public Gift? Gift { get; set; }

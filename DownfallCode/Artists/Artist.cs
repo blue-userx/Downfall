@@ -34,11 +34,17 @@ public abstract class Artist
     }
 }
 
+public class Fulgur : Artist;
+
 public class AlexMdle : Artist;
 
 public class Claude27A : Artist;
 
+public class DawnablesAwakened : Artist;
+
 public class GoofballMcgee : Artist;
+
+public class MalleableFrog : Artist;
 
 public class Eudaimonia : Artist;
 

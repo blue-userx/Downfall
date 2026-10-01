@@ -67,11 +67,10 @@ public class Bismuth : GemCard<BismuthGem>
 {
     public Bismuth()
     {
-        WithKeyword(CardKeyword.Unplayable);
+        //WithKeyword(CardKeyword.Unplayable);
     }
-
-    protected override bool IsPlayable => false;
-    protected override int CanonicalEnergyCost => -1;
+   //protected override bool IsPlayable => false;
+   protected override int CanonicalEnergyCost => 1;
 }
 
 #pragma warning restore STS001
@@ -81,17 +80,18 @@ public abstract class GemCard<T> : GuardianCardModel, IGemCard, IGemSocketCard, 
 {
     protected GemCard() : base(0, CardType.Skill, CardRarity.None, TargetType.Self)
     {
-        _titleLocString = GuardianModelDb.Gem<T>().Title;
         WithKeyword(GuardianKeyword.Gem);
-        foreach (var extraHoverTip in GuardianModelDb.Gem<T>().ExtraHoverTips)
-            WithTip(new TooltipSource(_ => extraHoverTip));
         CardModifier.AddModifier(this, GuardianModelDb.Gem<T>().ToMutable());
     }
+    
+    public override string Title => GuardianModelDb.Gem<T>().Title.GetFormattedText();
 
     public override bool CanBeGeneratedInCombat => false;
 
     public override CardRarity Rarity => GuardianModelDb.Gem<T>().Rarity;
     public override int MaxUpgradeLevel => 0;
+
+    public LocString GetTypePlaqueName => new("gameplay_ui", "GUARDIAN-GEM");
 
     public GemModel CanonicalGemModel => GuardianModelDb.Gem<T>();
 
@@ -100,7 +100,6 @@ public abstract class GemCard<T> : GuardianCardModel, IGemCard, IGemSocketCard, 
 
     public int GemSlots => 0;
 
-    public LocString GetTypePlaqueName => new("gameplay_ui", "GUARDIAN-GEM");
     public LocString ModifyDescription(LocString oldLocString)
     {
         return new LocString("cards", "GUARDIAN-GEM_CARD.description");

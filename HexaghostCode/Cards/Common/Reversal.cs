@@ -1,5 +1,6 @@
 ﻿using BaseLib.Utils;
 using Hexaghost.HexaghostCode.Core;
+using Hexaghost.HexaghostCode.CustomEnums;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -11,8 +12,20 @@ public class Reversal : HexaghostCardModel
     public Reversal() : base(1, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
     {
         WithDamage(5, 1);
-        this.WithRepeat(2);
+        WithRepeat(2);
+        WithTip(HexaghostTip.Ignite);
+        WithTip(HexaghostTip.Extinguish);
     }
+
+    protected override bool ShouldGlowGoldInternal
+    {
+        get
+        {
+            var a = HexaghostCmd.GetCurrentFlame(Owner);
+            return a.IsIgnited || a.AboutToIgnite(this);
+        }
+    }
+
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {

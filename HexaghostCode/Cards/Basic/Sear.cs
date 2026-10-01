@@ -1,10 +1,10 @@
 using BaseLib.Abstracts;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Commands;
 using Downfall.DownfallCode.Powers;
 using Hexaghost.HexaghostCode.Cards.Ancient;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -17,16 +17,18 @@ public class Sear : HexaghostCardModel, ITranscendenceCard, IHasAfterlifeEffect
 {
     public Sear() : base(1, CardType.Attack, CardRarity.Basic, TargetType.AnyEnemy)
     {
-        this.WithAfterlife();
+        WithAfterlife();
         WithDamage(5, 2);
         WithPower<SoulBurnPower>(5, 2);
     }
 
     protected override Artist Artist => Artist.Get<AlexMdle>();
 
-    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay? cardPlay, bool wasExhausted,
+        bool causedByEthereal)
     {
-        await CommonActions.Apply<SoulBurnPower>(ctx, this, cardPlay);
+        var target = cardPlay?.Target ?? CombatState?.RunState.Rng.CombatTargets.NextItem(CombatState.HittableEnemies);
+        await MyCommonActions.Apply<SoulBurnPower>(ctx, this, target);
     }
 
     public CardModel GetTranscendenceTransformedCard()
@@ -36,7 +38,10 @@ public class Sear : HexaghostCardModel, ITranscendenceCard, IHasAfterlifeEffect
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        await AfterlifeEffect(ctx, cardPlay);
+        if (cardPlay.Target == null) return;
+
+        await CommonActions.CardAttack(this, cardPlay).BeforeDamage(() =>
+            SoulBurnPower.SoulburnEffect(cardPlay.Target)).Execute(ctx);
+        await AfterlifeEffect(ctx, cardPlay, false, false);
     }
 }

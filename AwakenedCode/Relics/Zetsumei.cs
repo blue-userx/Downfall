@@ -16,12 +16,11 @@ namespace Awakened.AwakenedCode.Relics;
 [Pool(typeof(AwakenedRelicPool))]
 public class Zetsumei : AwakenedRelicModel
 {
-    private bool _isActivating;
-    private int _spellsPlayed;
-
+    
     public Zetsumei() : base(RelicRarity.Uncommon)
     {
         WithCards(4);
+        WithTip<Ceremony>();
     }
 
     public override bool ShowCounter => CombatManager.Instance.IsInProgress;
@@ -31,22 +30,22 @@ public class Zetsumei : AwakenedRelicModel
 
     private bool IsActivating
     {
-        get => _isActivating;
+        get;
         set
         {
             AssertMutable();
-            _isActivating = value;
+            field = value;
             UpdateDisplay();
         }
     }
 
     private int SpellsPlayed
     {
-        get => _spellsPlayed;
+        get;
         set
         {
             AssertMutable();
-            _spellsPlayed = value;
+            field = value;
             UpdateDisplay();
         }
     }

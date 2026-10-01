@@ -15,8 +15,9 @@ public class UnendingSupply : SneckoCardModel
         WithTip(DownfallKeyword.Echo);
         WithTip(CardKeyword.Ethereal);
         WithTip(CardKeyword.Exhaust);
-        this.WithPower<UnendingSupplyPower>(1, false);
+        WithPower<UnendingSupplyPower>(1, false);
         WithKeyword(CardKeyword.Innate, UpgradeType.Add);
+        WithTip(DownfallTip.Offclass);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)

@@ -1,13 +1,12 @@
 ﻿using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using Snecko.SneckoCode.Core;
 
 namespace Snecko.SneckoCode.Powers;
 
 public class SerpentineSleuthPower : SneckoPowerModel
 {
-    protected override async Task BeforeCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
+    public override async Task BeforeCardPlayed(CardPlay cardPlay)
     {
         if (cardPlay.Card.Owner.Creature != Owner || cardPlay.Card.Type != CardType.Power) return;
         await PlayerCmd.GainEnergy(Amount, cardPlay.Card.Owner);

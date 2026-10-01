@@ -1,9 +1,9 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Compatibility;
+using Hermit.HermitCode.Core;
 using Hermit.HermitCode.Powers;
 using Hermit.HermitCode.Utils;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -26,20 +26,11 @@ public class Headshot : HermitCardModel, IHasDeadOnEffect, IModifyDamageMultipli
         return Task.CompletedTask;
     }
 
-/*
-    public override decimal ModifyDamageMultiplicative(Creature? target, decimal amount, ValueProp props, Creature? dealer,
-        CardModel? cardSource, CardPlay? cardPlay)
-    {
-        if (this is not IHasDeadOnEffect deadOnEffect) return 1;
-        if (cardSource != this || dealer != Owner.Creature || !props.IsPoweredAttack() || !deadOnEffect.IsDeadOn)
-            return 1;
-        return Owner.Creature.HasPower<SnipePower>() ? 4 : 2;    }
-*/
     public decimal ModifyDamageMultiplicativeCompability(Creature? target, decimal amount, ValueProp props,
         Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
     {
-        if (this is not IHasDeadOnEffect deadOnEffect) return 1;
-        if (cardSource != this || dealer != Owner.Creature || !props.IsPoweredAttack() || !deadOnEffect.IsDeadOn)
+        if (cardSource != this || dealer != Owner.Creature || !props.IsPoweredAttack() ||
+            !HermitCmd.HasActiveDeadOnEffect(this))
             return 1;
         return Owner.Creature.HasPower<SnipePower>() ? 4 : 2;
     }
@@ -47,7 +38,7 @@ public class Headshot : HermitCardModel, IHasDeadOnEffect, IModifyDamageMultipli
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay play)
     {
-        await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
+        // await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
         HermitSfx.PlayGun2();
 
         await CommonActions.CardAttack(this, play).WithHermitGunHitFx()

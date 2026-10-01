@@ -1,54 +1,27 @@
 using BaseLib.Utils;
-using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
 using Collector.CollectorCode.CustomEnums;
-using Collector.CollectorCode.Interfaces;
+using Collector.CollectorCode.Powers;
 using Downfall.DownfallCode.Artists;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.HoverTips;
-using MegaCrit.Sts2.Core.Models;
 
 namespace Collector.CollectorCode.Cards.Common;
 
 [Pool(typeof(CollectorCardPool))]
-public class Flash : CollectorCardModel, IHasPyre
+public class Flash : CollectorCardModel
 {
-    public Flash() : base(1, CardType.Skill, CardRarity.Common, TargetType.Self)
+    public Flash() : base(1, CardType.Skill, CardRarity.Common, TargetType.AnyEnemy)
     {
+        WithPower<MiasmaPower>(4, 2);
         WithKeyword(CollectorKeyword.Pyre);
-        WithKeyword(CardKeyword.Exhaust);
-        WithTip(new TooltipSource(c =>
-        {
-            var card = ModelDb.GetById<Trip>(ModelDb.Card<Trip>().Id).ToMutable();
-            if (c.IsUpgraded) card.UpgradeInternal();
-            return HoverTipFactory.FromCard(card);
-        }));
-        WithTip(new TooltipSource(c =>
-        {
-            var card = ModelDb.GetById<Blind>(ModelDb.Card<Blind>().Id).ToMutable();
-            if (c.IsUpgraded) card.UpgradeInternal();
-            return HoverTipFactory.FromCard(card);
-        }));
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
-
-    public CardModel? PyredCard { get; set; }
-
+    
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var trip = CombatState!.CreateCard<Trip>(cardPlay.Card.Owner);
-        var blind = CombatState!.CreateCard<Blind>(cardPlay.Card.Owner);
-        if (IsUpgraded)
-        {
-            trip.UpgradeInternal();
-            blind.UpgradeInternal();
-        }
-
-        var chosen = await CardSelectCmd.FromChooseACardScreen(ctx, [trip, blind], Owner);
-        if (chosen == null) return;
-        await CardPileCmd.AddGeneratedCardToCombat(chosen, PileType.Hand, Owner);
+        if (cardPlay.Target == null) return;
+        await CommonActions.Apply<MiasmaPower>(ctx, this, cardPlay);
     }
 }

@@ -1,10 +1,8 @@
 ﻿using Automaton.AutomatonCode.Cards.Basic;
 using Automaton.AutomatonCode.Relics;
 using Downfall.DownfallCode.Abstract;
-using Downfall.DownfallCode.Utils.Sound;
+using Downfall.DownfallCode.Config;
 using Godot;
-using MegaCrit.Sts2.Core.Animation;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Characters;
 using MegaCrit.Sts2.Core.Entities.Potions;
@@ -17,7 +15,7 @@ namespace Automaton.AutomatonCode.Core;
 public class Automaton : DownfallCharacterModel
 {
     private static readonly Color Color = new(0xD4C99DFF);
-    public override Color EnergyLabelOutlineColor  => new("4e3e01FF");
+    public override Color EnergyLabelOutlineColor => new("4e3e01FF");
     public override string CharId => "Automaton";
     public override string ModId => AutomatonMainFile.ModId;
     public override Color NameColor => Color;
@@ -28,7 +26,10 @@ public class Automaton : DownfallCharacterModel
     public override float CardColorV => 1.2f;
     public override Color MapDrawingColor => new(0xFFFF00FF);
 
-    public override CharacterGender Gender => CharacterGender.Feminine;
+    public override bool HideFromVanillaCharacterSelect => DownfallConfig.HideAutomaton;
+    public override bool HideInCompendium => DownfallConfig.HideAutomaton;
+    
+    public override CharacterGender Gender => CharacterGender.Neutral;
     protected override CharacterModel? UnlocksAfterRunAs => null;
     public override int StartingHp => 70;
     public override int StartingGold => 99;
@@ -46,11 +47,6 @@ public class Automaton : DownfallCharacterModel
     public override PotionPoolModel PotionPool => ModelDb.PotionPool<AutomatonPotionPool>();
     public override RelicPoolModel RelicPool => ModelDb.RelicPool<AutomatonRelicPool>();
 
-
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Automaton/audio/character_select/STS_SFX_AutomatonOrbSpawn_v1.ogg", 1, 0.1f, 1, 7),
-        new ModSoundEntry("res://Automaton/audio/character_select/STS_SFX_BronzeAutomatonSummon_v2.ogg", 1, 0.1f, 1, 7)
-    );
 
     public override IEnumerable<CardModel> StartingDeck =>
     [
@@ -77,7 +73,8 @@ public abstract class AutomatonPowerModel(
     PowerType powerType = PowerType.Buff,
     PowerStackType powerStackType = PowerStackType.Counter) : DownfallPowerModel<Automaton>(powerType, powerStackType);
 
-public abstract class AutomatonRelicModel(RelicRarity rarity, bool autoAdd = true) : DownfallRelicModel<Automaton>(rarity, autoAdd);
+public abstract class AutomatonRelicModel(RelicRarity rarity, bool autoAdd = true)
+    : DownfallRelicModel<Automaton>(rarity, autoAdd);
 
 public abstract class AutomatonEnchantmentModel : DownfallEnchantmentModel<Automaton>;
 

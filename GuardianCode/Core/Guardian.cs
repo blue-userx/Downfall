@@ -1,10 +1,14 @@
 ﻿using Downfall.DownfallCode.Abstract;
-using Downfall.DownfallCode.Utils.Sound;
+using Downfall.DownfallCode.Compatibility;
+using Downfall.DownfallCode.Config;
 using Godot;
 using Guardian.GuardianCode.Cards.Basic;
 using Guardian.GuardianCode.Relics;
+using MegaCrit.Sts2.Core.Animation;
+using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Characters;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Entities.Relics;
@@ -15,7 +19,7 @@ namespace Guardian.GuardianCode.Core;
 public class Guardian : DownfallCharacterModel
 {
     private static readonly Color Color = new(0xCA5B5BFF);
-    public override Color EnergyLabelOutlineColor  => new(0x575044FF);
+    public override Color EnergyLabelOutlineColor => new(0x575044FF);
     public override string CharId => "Guardian";
     public override string ModId => GuardianMainFile.ModId;
     public override Color NameColor => Color;
@@ -26,7 +30,10 @@ public class Guardian : DownfallCharacterModel
     public override float CardColorV => 1.2f;
     public override Color MapDrawingColor => Color;
 
-    public override CharacterGender Gender => CharacterGender.Masculine;
+    public override bool HideFromVanillaCharacterSelect => DownfallConfig.HideGuardian;
+    public override bool HideInCompendium => DownfallConfig.HideGuardian;
+    
+    public override CharacterGender Gender => CharacterGender.Neutral;
     protected override CharacterModel? UnlocksAfterRunAs => null;
     public override int StartingHp => 80;
     public override int StartingGold => 99;
@@ -45,11 +52,6 @@ public class Guardian : DownfallCharacterModel
         ModelDb.Card<TwinSlam>()
     ];
 
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Guardian/audio/character_select/STS_SFX_Guardian3Destroy_v2.ogg", 1, 0.1f, 1, 7)
-    );
-
-
     protected override IEnumerable<string> ExtraAssetPaths =>
         GuardianModelDb.AllGems.Select(g => g.IconPath);
 
@@ -67,30 +69,84 @@ public class Guardian : DownfallCharacterModel
     public override RelicPoolModel RelicPool => ModelDb.RelicPool<GuardianRelicPool>();
 
 
-    /*
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
+    private Func<Creature, bool> IsDefensive => creature => creature.Player != null && GuardianCmd.IsInMode<GuardianDefensiveMode>(creature.Player);
+
+    public override CreatureAnimator? SetupCustomAnimationStates(MegaSprite controller)
     {
-        var idleNormal = new AnimState("idle", true);
-        var idleDefensive = new AnimState("defensive", true);
+        var creature = controller.GetOwningCreature();
+        if (creature == null)
+            return null;
+
+        var idle          = new AnimState("idle_loop", true);
+        var idleDefensive = new AnimState("idle_loop_defensive", true);
+
+        var idles = new (string name, AnimState state, Func<bool> when)[]
+        {
+            ("IdleDefensive", idleDefensive, () => IsDefensive(creature)),
+            ("Idle",          idle,          () => !IsDefensive(creature)),
+        };
+
+        var animator = new CreatureAnimator(PickIdle(), controller);
+
+        foreach (var (name, state, when) in idles)
+            animator.AddAnyState(name, state, when);
+
+        var attack          = new AnimState("attack");
+        var attackDefensive = new AnimState("attack_defensive");
+        var hurt            = new AnimState("hurt");
+        var hurtDefensive   = new AnimState("hurt_defensive");
+
+       
+        var attacks = new (AnimState state, Func<bool> when)[]
+        {
+            (attackDefensive, () => IsDefensive(creature)),
+            (attack,          () => !IsDefensive(creature)),
+        };
+
+        
+        var transitionIn   = new AnimState("transition_in");
+        foreach (var (_, idleState, idleWhen) in idles)
+            transitionIn.AddConditionalNextState(idleState, idleWhen);
+        animator.AddAnyState("TransitionIn", transitionIn);
+        
+        var transitionOut   = new AnimState("transition_out");
+        foreach (var (_, idleState, idleWhen) in idles)
+            transitionOut.AddConditionalNextState(idleState, idleWhen);
+        animator.AddAnyState("TransitionOut", transitionOut);
+        
+        foreach (var (state, when) in attacks)
+        {
+            foreach (var (_, idleState, idleWhen) in idles)
+                state.AddConditionalNextState(idleState, idleWhen);
+            animator.AddAnyState(CreatureAnimator.attackTrigger, state, when);
+        }
+
+        var hurts = new (AnimState state, Func<bool> when)[]
+        {
+            (hurtDefensive, () => IsDefensive(creature)),
+            (hurt,          () => !IsDefensive(creature)),
+        };
+
+        foreach (var (state, when) in hurts)
+        {
+            foreach (var (_, idleState, idleWhen) in idles)
+                state.AddConditionalNextState(idleState, idleWhen);
+            animator.AddAnyState(CreatureAnimator.hitTrigger, state, when);
+        }
 
 
-        var animator = new CreatureAnimator(idleNormal, controller);
-        animator.AddAnyState("Idle", idleNormal, IsInMode<GuardianNormalMode>);
-        animator.AddAnyState("Idle", idleDefensive, IsInMode<GuardianDefensiveMode>);
+        animator.AddAnyState(CreatureAnimator.deathTrigger, new AnimState("die"));
         return animator;
 
-        bool IsInMode<T>() where T : GuardianModeModel
-        {
-            return ControllerToPlayer.TryGetValue(controller, out var player)
-                   && GuardianCmd.IsInMode<T>(player);
-        }
+        AnimState PickIdle() => idles.First(i => i.when()).state;
     }
-    */
+
 }
 
 public class GuardianRelicPool : DownfallRelicPool<Guardian>;
 
-public abstract class GuardianRelicModel(RelicRarity rarity, bool autoAdd = true) : DownfallRelicModel<Guardian>(rarity, autoAdd);
+public abstract class GuardianRelicModel(RelicRarity rarity, bool autoAdd = true)
+    : DownfallRelicModel<Guardian>(rarity, autoAdd);
 
 public abstract class GuardianPowerModel(
     PowerType powerType = PowerType.Buff,

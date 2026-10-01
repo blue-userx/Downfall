@@ -12,7 +12,7 @@ public sealed class Maintenance : HermitCardModel
 {
     public Maintenance() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
-        this.WithPower<MaintenanceStrikePower>(3, 1, false);
+        WithPower<MaintenanceStrikePower>(3, 1, false);
         WithPower<DexterityPower>(1, 1);
     }
 
@@ -23,6 +23,6 @@ public sealed class Maintenance : HermitCardModel
         await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await CommonActions.ApplySelf<MaintenanceStrikePower>(ctx, this);
         await CommonActions.ApplySelf<DexterityPower>(ctx, this);
-        EnergyCost.UpgradeBy(1);
+        EnergyCost.AddThisCombat(1);
     }
 }

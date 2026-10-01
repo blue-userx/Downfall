@@ -5,7 +5,6 @@ using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
 namespace Automaton.AutomatonCode.Cards.Rare;
@@ -16,29 +15,21 @@ public class SpaghettiCode : AutomatonCardModel
     public SpaghettiCode() : base(2, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
         WithKeywords(CardKeyword.Exhaust);
-        WithTip(AutomatonTip.Encode);
-        WithCostUpgradeBy(-1);
+        WithTip(AutomatonKeyword.Encode);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
-    {
-        var rng = Owner.RunState.Rng.CombatCardSelection;
-
-       
-        var cards =  CardFactory.FilterForCombat(Owner.Character.CardPool
-            .GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint)
-            .Where(c => AutomatonCmd.IsEncodable(c) && c.Rarity != CardRarity.Token)).ToList();
-        
+    { 
         FunctionCard? functionCard = null;
         while (functionCard == null)
         {
-            var choices = CardFactory.GetDistinctForCombat(Owner, cards, 3, rng).ToList();
+            var choices = AutomatonCmd.GetEncodableCards(Owner, 3).ToList();
             var selected = await CardSelectCmd.FromChooseACardScreen(ctx, choices, Owner);
             if (selected == null) break;
             functionCard = await AutomatonCmd.EncodeCard(selected, ctx);
         }
-        functionCard?.SetToFreeThisTurn();
+        if (IsUpgraded) functionCard?.SetToFreeThisTurn();
     }
 }

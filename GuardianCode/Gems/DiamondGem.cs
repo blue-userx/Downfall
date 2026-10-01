@@ -6,6 +6,7 @@ using Guardian.GuardianCode.DynamicVars;
 using Guardian.GuardianCode.Events;
 using Guardian.GuardianCode.Extensions;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
@@ -37,7 +38,8 @@ public class DiamondGem : GemModel
         }
     }
 
-    protected override Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay)
+    protected override Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay,
+        IEnumerable<Player> targetPlayers)
     {
         return Task.CompletedTask;
     }
@@ -54,7 +56,7 @@ public class DiamondGem : GemModel
         var combatState = owner.Creature.CombatState;
         if (combatState == null) return originalPlayCount;
         return originalPlayCount +
-               (int)GuardianHook.ModifyGemEffect(combatState, this, DynamicVars.Gem().BaseValue, Card);
+               (int)GuardianHook.ModifyGemEffect(combatState, this, DynamicVars.Gem.BaseValue, Card);
     }
 
     public override Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
@@ -64,12 +66,13 @@ public class DiamondGem : GemModel
         UsedThisCombat = true;
         return Task.CompletedTask;
     }
-    
+
     public override bool TryModifyEnergyCostInCombat(CardModel card, decimal originalCost, out decimal modifiedCost)
     {
         modifiedCost = originalCost;
-        if (Card is  IGemCard || card != Card) return false;
-        modifiedCost++;;
+        if (Card is IGemCard || card != Card) return false;
+        modifiedCost++;
+        ;
         return true;
     }
 }

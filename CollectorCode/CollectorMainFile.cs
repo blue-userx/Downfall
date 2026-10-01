@@ -1,17 +1,19 @@
-using System.Reflection;
-using Collector.CollectorCode.Core;
-using Downfall.DownfallCode;
+﻿using Collector.CollectorCode.Core;
+using Collector.CollectorCode.Patches;
 using Downfall.DownfallCode.Localization;
+using Downfall.DownfallCode.Patches;
 using Downfall.DownfallCode.Utils;
-using Godot;
+using Downfall.DownfallCode.Voting;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
+using MegaCrit.Sts2.Core.Models;
+using Char = Collector.CollectorCode.Cards.Common.Char;
 using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
 namespace Collector.CollectorCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class CollectorMainFile : Node
+public static class CollectorMainFile
 {
     public const string ModId = "Collector"; //At the moment, this is used only for the Logger and harmony names.
 
@@ -20,16 +22,39 @@ public partial class CollectorMainFile : Node
 
     public static void Initialize()
     {
-        CardExecutionRegistry.RegisterBefore(CollectorCardEffectHandler.DoBeforeOnPlayInternal);
-        
+        PostInitRegistry.Register(PostModelInit);
+        HivePowerExemptRegistry.Register<TorchheadMonsterModel>();
+
         BundledSubmodLocRegistry.Register(ModId);
         
-        RunHooks.OnNewRunPerPlayer(player =>
+        FormBoneRegistry.RegisterVoidForm<Core.Collector>("robeback");
+        FormBoneRegistry.RegisterSerpentForm<Core.Collector>("robeback");
+        FormBoneRegistry.RegisterReaperForm<Core.Collector>("robeback");
+        FormBoneRegistry.RegisterEchoForm<Core.Collector>("robeback");
+        VotingPoolRegistry.Register<CollectorCardPool>(VotingPool.Collector, ModId);
+        HarmonyLib.Harmony.DEBUG = true;
+        
+        ModPatcher.Create(ModId, Logger)
+            .Add(typeof(AddMyPoolFilterPatch))
+            .Add(typeof(NDamageNumVfxOverkillPatch))
+            .Add(typeof(NMultiplayerPlayerStatePatch))
+            .Add(typeof(OnPlayWrapperPlayCountPatch))
+            .Add(typeof(ReserveSpendPatch))
+            .Add(typeof(ReserveAffordabilityPatch))
+            .Add(typeof(ReserveCounterPatch))
+            .Add(typeof(SuppressMultiplayerBlockScalingPatch))
+            .PatchAll();
+    }
+    
+    
+    private static void PostModelInit()
+    {
+        CustomBundleRegistry.Register<Core.Collector>(new CustomPackage
         {
-            EssenceModel.ClearEssence(player);
-            CollectiblesModel.ClearCollectibles(player);
-            if (player.Character is Core.Collector)
-                EssenceModel.AddEssence(player, 5);
+            ChancePercent = 2,
+            Card1 = ModelDb.Card<Char>(),
+            Card2 = ModelDb.Card<Char>(),
+            Card3 = ModelDb.Card<Char>()
         });
     }
 }

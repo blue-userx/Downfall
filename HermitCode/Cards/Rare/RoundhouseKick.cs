@@ -2,7 +2,6 @@ using BaseLib.Utils;
 using Downfall.DownfallCode.Abstract;
 using Downfall.DownfallCode.Artists;
 using Hermit.HermitCode.Utils;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -15,15 +14,15 @@ public sealed class RoundhouseKick : HermitCardModel
     {
         WithDamage(13, 5);
         WithKeyword(CardKeyword.Exhaust);
-        this.WithPower<RoundhouseKickPower>(10, 2, false);
-        this.WithTip<StrengthPower>();
+        WithPower<RoundhouseKickPower>(10, 2, false);
+        WithTip<StrengthPower>();
     }
 
     protected override Artist Artist => Artist.Get<AlexMdle>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay play)
     {
-        await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay); 
+        // await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
         await CommonActions.CardAttack(this, play)
             .WithHermitBluntHeavyHitFx()
             .Execute(ctx);

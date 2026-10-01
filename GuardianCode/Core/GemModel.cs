@@ -10,7 +10,6 @@ using Guardian.GuardianCode.Interfaces;
 using MegaCrit.Sts2.Core.Assets;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
-using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -19,6 +18,7 @@ using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.TestSupport;
 
 namespace Guardian.GuardianCode.Core;
 
@@ -53,7 +53,7 @@ public abstract class GemModel : CardModifier, ICustomModel
         .ToLowerInvariant();
 
     public CardModel? Card => IsCanonical ? null : Owner;
-    
+
     public GemModel CanonicalInstance
     {
         get => !IsMutable ? this : _canonicalInstance;
@@ -68,8 +68,7 @@ public abstract class GemModel : CardModifier, ICustomModel
     {
         get
         {
-            var hoverTips = new List<IHoverTip>();
-            hoverTips.Add(ToHoverTip(GetFormattedText()));
+            var hoverTips = new List<IHoverTip> { ToHoverTip(GetFormattedText()) };
             hoverTips.AddRange(ExtraHoverTips);
             return hoverTips;
         }
@@ -89,8 +88,9 @@ public abstract class GemModel : CardModifier, ICustomModel
 
     public virtual IEnumerable<IHoverTip> ExtraHoverTips => [];
 
-    public override void ModifyDescription(Creature? target, ref string description)
+    public override void AddTips(List<IHoverTip> tips)
     {
+        tips.AddRange(HoverTips);
     }
 
     public string GetFormattedText(bool cardText = false)
@@ -139,18 +139,13 @@ public abstract class GemModel : CardModifier, ICustomModel
         AssertMutable();
         return (GemModel)MutableClone();
     }
-    
+
 
     private HoverTip ToHoverTip(string description)
     {
-        return new HoverTip
+        return new HoverTip(Title, description, Icon)
         {
-            CanonicalModel = null,
-            ShouldOverrideTextOverflow = false,
             Id = Id.ToString(),
-            Title = Title.GetFormattedText(),
-            Description = description,
-            Icon = Icon,
             IsSmart = true
         };
     }
@@ -161,20 +156,36 @@ public abstract class GemModel : CardModifier, ICustomModel
         description.Add("energyPrefix", EnergyIconHelper.GetPrefix(ModelDb.Card<StrikeGuardian>()));
     }
 
-    protected abstract Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay);
-    
-    
+    protected abstract Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay,
+        IEnumerable<Player> targetPlayers);
+
+
     public sealed override async Task OnPlay(PlayerChoiceContext ctx, CardPlay? cardPlay)
     {
-        GuardianMainFile.Logger.Info($"Played Gem : {Id.Entry}");
+        if (TestMode.IsOff) GuardianMainFile.Logger.Info($"Played Gem : {Id.Entry}");
+        if (cardPlay?.Card is IGemSocketCard { ShouldPlayGems: false }) return;
+        // A gem left over past GemSlots (e.g. a downgrade shrank capacity below what's socketed)
+        // stays attached but is inactive - it doesn't play, matching what the socket display shows.
+        // GemCard<T> reports GemSlots == 0 purely so its own overlay stays hidden (it's a standalone
+        // gem, not a real socket) - that must not suppress its single always-present gem.
+        if (cardPlay?.Card is IGemSocketCard socket and not IGemCard && SocketIndex >= socket.GemSlots) return;
         var replay = cardPlay?.Card is IGemSocketCard guardianCardModel ? guardianCardModel.GemReplayCount : 1;
-        for (var i = 0; i < replay; i++)  await OnPlayInternal(ctx, cardPlay);
+        var affectsAll = cardPlay?.Card is IGemSocketCard { GemsAffectAllPlayers: true };
+        var targetPlayers = TargetPlayers(affectsAll).ToList();
+        for (var i = 0; i < replay; i++) await OnPlayInternal(ctx, cardPlay, targetPlayers);
         await GuardianHook.AfterGemPlayed(CombatState, ctx, this, cardPlay);
+    }
+
+    protected IEnumerable<Player> TargetPlayers(bool affectAllPlayers)
+    {
+        yield return Player;
+        if (!affectAllPlayers) yield break;
+        foreach (var other in CombatState.Players.Where(p => p != Player))
+            yield return other;
     }
 
     public virtual int ModifyPlayCount(int originalPlayCount)
     {
         return originalPlayCount;
     }
-
 }

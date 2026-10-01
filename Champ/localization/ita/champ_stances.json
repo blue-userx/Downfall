@@ -1,0 +1,7 @@
+{
+    "CHAMP-CHAMP_DEFENSIVE_STANCE.title": "Posa Difensiva",
+    "CHAMP-CHAMP_BERSERKER_STANCE.title": "Posa Berserker",
+    "CHAMP-CHAMP_NO_STANCE.title": "Nessuna Posa",
+    "CHAMP-CHAMP_ULTIMATE_STANCE.title": "Posa Suprema",
+    "CHAMP-CHAMP_NO_STANCE.finisher": "{:finisher()} [gold]Finale[/gold]"
+}

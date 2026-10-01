@@ -1,4 +1,5 @@
-﻿using MegaCrit.Sts2.Core.Entities.Relics;
+﻿using BaseLib.Abstracts;
+using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
@@ -6,7 +7,7 @@ using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Downfall.DownfallCode.Abstract;
 
-public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = true) : HookedRelicModel(autoAdd)
+public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = true) : CustomRelicModel(autoAdd)
 {
     private readonly List<AbstractTooltipSource<RelicModel>> _hoverTips = [];
     private readonly List<Func<RelicModel, IEnumerable<IHoverTip>>> _multiHoverTips = [];
@@ -39,7 +40,7 @@ public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = t
 
     protected ConstructedRelicModel WithDamage(int i)
     {
-        WithVars(new DamageVar(i, ValueProp.Unpowered));
+        WithVars(new DamageVar(i, DamageProps.nonCardUnpowered));
         return this;
     }
 
@@ -48,12 +49,18 @@ public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = t
         WithVars(new CardsVar(i));
         return this;
     }
+    
+    protected ConstructedRelicModel WithHpLoss(int i)
+    {
+        WithVars(new HpLossVar(i));
+        return this;
+    }
 
 
     protected ConstructedRelicModel WithBlock(int i)
     {
         WithTip(StaticHoverTip.Block);
-        WithVars(new BlockVar(i, ValueProp.Unpowered));
+        WithVars(new BlockVar(i, BlockProps.nonCardUnpowered));
         return this;
     }
 
@@ -68,6 +75,7 @@ public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = t
         _newDynamicVars.Add(new PowerVar<T>(i));
         return this;
     }
+    
 
     protected ConstructedRelicModel WithVar(string name, int baseVal)
     {
@@ -79,6 +87,28 @@ public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = t
     {
         _hoverTips.Add(tipSource);
         return this;
+    }
+
+    protected ConstructedRelicModel WithCardTip<T>(Action<T, RelicModel>? modifyTipCard = null)
+        where T : CardModel
+    {
+        return WithTips(relic =>
+        {
+            var mutable = ModelDb.Card<T>().ToMutable();
+            if (mutable is T obj2) modifyTipCard?.Invoke(obj2, relic);
+            return [HoverTipFactory.FromCard(mutable), ..mutable.HoverTips];
+        });
+    }
+    
+    protected ConstructedRelicModel WithUpgradedCardTip<T>(
+        Action<T, RelicModel>? modifyTipCard = null)
+        where T : CardModel
+    {
+        return WithCardTip<T>((hoverCard, relic) =>
+        {
+            hoverCard.UpgradeInternal();
+            modifyTipCard?.Invoke(hoverCard, relic);
+        });
     }
 
     protected ConstructedRelicModel WithTips(
@@ -104,7 +134,7 @@ public abstract class ConstructedRelicModel(RelicRarity rarity, bool autoAdd = t
         WithVars(new HealVar(baseVal));
         return this;
     }
-    
+
     protected ConstructedRelicModel WithGold(int baseVal)
     {
         WithVars(new GoldVar(baseVal));

@@ -13,7 +13,7 @@ public class StrikeForStrike : GuardianCardModel, IGemSocketCard
     public StrikeForStrike() : base(1, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
     {
         WithDamage(13, 4);
-        this.WithEnemyDamage(3);
+        WithEnemyDamage(3);
         WithTags(CardTag.Strike);
     }
 
@@ -22,6 +22,6 @@ public class StrikeForStrike : GuardianCardModel, IGemSocketCard
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        await DownfallCmd.EnemyAttackPlayer(ctx, cardPlay, this);
+        await DownfallCombatCmd.EnemyAttackPlayer(ctx, cardPlay, this);
     }
 }

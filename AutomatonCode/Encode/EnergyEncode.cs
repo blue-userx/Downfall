@@ -8,19 +8,27 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace Automaton.AutomatonCode.Encode;
 
-public class EnergyEncode : Encodable
+public class EnergyEncode : ValueEncode
 {
+    public override string Id => "ENERGY_ENCODE";
+    public override int Order => 8;
+
     public override TargetType Target => TargetType.Self;
     public override CardType Type => CardType.Skill;
+    public override DynamicVar FunctionDynamicVar => new EnergyVar(0);
+
     public override Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
-        var player = model.GetCreature().Player;
-        return player == null ?
-            Task.CompletedTask : 
-            PlayerCmd.GainEnergy(model.GetDynamicVars().Energy.IntValue, player);
+        var player = model.Creature.Player;
+        return player == null
+            ? Task.CompletedTask
+            : PlayerCmd.GainEnergy(model.DynamicVars.Energy.IntValue, player);
     }
-    public override DynamicVar FunctionDynamicVar => new EnergyVar(0);
-    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model) => [GetEnergyTip(model)];
+
+    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model)
+    {
+        return [GetEnergyTip(model)];
+    }
 
     private IHoverTip GetEnergyTip(AbstractModel model)
     {
@@ -33,6 +41,4 @@ public class EnergyEncode : Encodable
             _ => throw new Exception("Unknown model")
         };
     }
-    
-    public override DynamicVar DynamicVar(AbstractModel model) => model.GetDynamicVars().Energy;
 }

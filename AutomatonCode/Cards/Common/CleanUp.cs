@@ -1,6 +1,7 @@
 ﻿using Automaton.AutomatonCode.Core;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -23,13 +24,16 @@ public class CleanUp : AutomatonCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-      
         var prefs = new CardSelectorPrefs(CardSelectorPrefs.ExhaustSelectionPrompt, 1);
         var card = (await CardSelectCmd.FromHand(ctx, Owner, prefs,
             null, this)).FirstOrDefault();
-        if (card == null) return;
-        await CardCmd.Exhaust(ctx, card);
-        var hitCount = card is { Type: CardType.Curse or CardType.Status } ? 2 : 1;
+        var hitCount = 1;
+        if (card != null)
+        {
+            await CardCmdCompatibility.Exhaust(ctx, card);
+            hitCount = card is { Type: CardType.Curse or CardType.Status } ? 2 : 1;
+        }
+
         await CommonActions.CardAttack(this, cardPlay, hitCount).Execute(ctx);
     }
 }

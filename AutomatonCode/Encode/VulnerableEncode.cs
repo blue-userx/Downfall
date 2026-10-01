@@ -9,17 +9,24 @@ using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Automaton.AutomatonCode.Encode;
 
-public class VulnerableEncode : Encodable
+public class VulnerableEncode : ValueEncode
 {
+    public override string Id => "VULNERABLE_ENCODE";
+    public override int Order => 5;
+
     public override TargetType Target => TargetType.AnyEnemy;
     public override CardType Type => CardType.Skill;
+    public override DynamicVar FunctionDynamicVar => new PowerVar<VulnerablePower>(0);
+
     public override Task OnPlay(AbstractModel model, PlayerChoiceContext ctx, Creature? target, CardPlay? cardPlay)
     {
         if (target == null) return Task.CompletedTask;
         return PowerCmd.Apply<VulnerablePower>(ctx, target,
-            model.GetDynamicVars().Vulnerable.BaseValue, model.GetCreature(), model as CardModel);
+            model.DynamicVars.Vulnerable.BaseValue, model.Creature, model as CardModel);
     }
-    public override DynamicVar FunctionDynamicVar => new PowerVar<VulnerablePower>(0);
-    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model) => [HoverTipFactory.FromPower<VulnerablePower>()];
-    public override DynamicVar DynamicVar(AbstractModel model) => model.GetDynamicVars().Vulnerable;
+
+    public override IEnumerable<IHoverTip> HoverTips(AbstractModel model)
+    {
+        return [HoverTipFactory.FromPower<VulnerablePower>()];
+    }
 }

@@ -1,6 +1,7 @@
 using BaseLib.Utils;
 using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
+using Collector.CollectorCode.CustomEnums;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -13,12 +14,14 @@ namespace Collector.CollectorCode.Cards.Rare;
 [Pool(typeof(CollectorCardPool))]
 public class SunbloomKindling : CollectorCardModel
 {
-    public SunbloomKindling() : base(-1, CardType.Skill, CardRarity.Rare, TargetType.Self)
+    public SunbloomKindling() : base(3, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
-        WithKeyword(CardKeyword.Unplayable);
-        WithPower<StrengthPower>(2, 3);
+        WithKeyword(CardKeyword.Exhaust);
+        WithKeyword(CollectorKeyword.Flicker);
+        WithKindle(5, 3);
+        WithPower<StrengthPower>(2);
         WithCards(2);
-        this.WithTip<Ember>();
+        WithUpgradingCardTip<Ember>();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
@@ -27,7 +30,13 @@ public class SunbloomKindling : CollectorCardModel
         bool causedByEthereal)
     {
         if (card != this) return;
-        await CommonActions.ApplySelf<StrengthPower>(ctx, this);
-        await DownfallCardCmd.GiveCards<Ember>(Owner, PileType.Hand, DynamicVars.Cards.IntValue);
+        var playCount = await GeneratePlayCount(CombatState!, null);
+        for (var i = 0; i < playCount; ++i)
+        {
+            await TorchheadCmd.Kindle(ctx, this);
+            await CommonActions.ApplySelf<StrengthPower>(ctx, this);
+            await DownfallCardCmd.GiveCards<Ember>(Owner, PileType.Hand, DynamicVars.Cards.IntValue,
+                CardPilePosition.Bottom, IsUpgraded);
+        }
     }
 }

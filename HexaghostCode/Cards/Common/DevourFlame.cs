@@ -12,8 +12,9 @@ public class DevourFlame : HexaghostCardModel
 {
     public DevourFlame() : base(0, CardType.Skill, CardRarity.Common, TargetType.Self)
     {
-        WithBlock(9, 3);
+        WithBlock(10, 3);
         WithTip(HexaghostKeyword.Retract);
+        WithTip(HexaghostTip.Ignite);
     }
 
     protected override Artist Artist => Artist.Get<Inmo>();

@@ -1,4 +1,5 @@
-﻿using BaseLib.Utils;
+﻿using Downfall.DownfallCode.Extensions;
+using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using Snecko.SneckoCode.Core;
@@ -16,12 +17,9 @@ public class Shed : SneckoCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var cards = Owner.GetHand();
+        var cards = Owner.Hand;
         await SneckoCmd.Muddle(ctx, cards, this);
-        var nowNull = cards.Count(e => e.EnergyCost.GetResolved() == 0);
-        for (var i = 0; i < nowNull; i++)
-        {
-            await CommonActions.CardBlock(this, cardPlay);
-        }
+        var nowNull = cards.Count(e => e.EnergyCost.Is0Cost);
+        for (var i = 0; i < nowNull; i++) await CommonActions.CardBlock(this, cardPlay);
     }
 }

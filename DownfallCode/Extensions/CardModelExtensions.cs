@@ -6,23 +6,23 @@ namespace Downfall.DownfallCode.Extensions;
 
 public static class CardModelExtensions
 {
-    public static CardModel CreateEcho(this CardModel card)
+    extension(CardModel card)
     {
-        return card.CreateClone().ToEcho();
-    }
+        public bool IsEcho => card.Keywords.Contains(DownfallKeyword.Echo);
 
-    public static CardModel ToEcho(this CardModel card)
-    {
-        if (card.IsEcho())
-            throw new InvalidOperationException($"Card {card.Id} is already an Echo.");
-        card.AddKeyword(CardKeyword.Exhaust);
-        card.AddKeyword(CardKeyword.Ethereal);
-        card.AddKeyword(DownfallKeyword.Echo);
-        return card;
-    }
+        public CardModel CreateEcho()
+        {
+            return card.CreateClone().ToEcho();
+        }
 
-    public static bool IsEcho(this CardModel card)
-    {
-        return card.Keywords.Contains(DownfallKeyword.Echo);
+        public CardModel ToEcho()
+        {
+            if (card.IsEcho)
+                throw new InvalidOperationException($"Card {card.Id} is already an Echo.");
+            card.AddKeyword(CardKeyword.Exhaust);
+            card.AddKeyword(CardKeyword.Ethereal);
+            card.AddKeyword(DownfallKeyword.Echo);
+            return card;
+        }
     }
 }

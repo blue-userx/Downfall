@@ -12,19 +12,19 @@ public class Challenge : ChampCardModel
 {
     public Challenge() : base(2, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        WithBlock(8, 3);
-        WithDamage(8, 3);
-        this.WithTip<StrengthPower>();
+        WithBlock(7, 3);
+        WithDamage(7, 3);
+        WithTip<StrengthPower>();
     }
 
     protected override Artist Artist => Artist.Get<Magerblutooth>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardBlock(this, cardPlay);
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        if (cardPlay.Target == null || cardPlay.Target.GetPowerAmount<StrengthPower>() <= 0) return;
-        await CommonActions.CardBlock(this, cardPlay);
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        var repeats = cardPlay.Target != null && cardPlay.Target.GetPowerAmount<StrengthPower>() > 0 ? 2 : 1;
+    
+        await CommonActions.CardAttack(this, cardPlay, repeats)
+            .BeforeDamage(async () => await CommonActions.CardBlock(this, cardPlay))
+            .Execute(ctx);
     }
 }

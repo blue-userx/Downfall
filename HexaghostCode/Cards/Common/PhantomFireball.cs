@@ -12,18 +12,19 @@ public class PhantomFireball : HexaghostCardModel
 {
     public PhantomFireball() : base(0, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
     {
-        WithDamage(4, 2);
-        this.WithTip<SoulBurnPower>();
+        WithDamage(4, 3);
+        WithTip<SoulBurnPower>();
     }
 
     protected override Artist Artist => Artist.Get<Inmo>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
+        await CommonActions.CardAttack(this, cardPlay).BeforeDamage(() =>
+            SoulBurnPower.SoulburnEffect(cardPlay.Target)).Execute(ctx);
         if (cardPlay.Target == null || cardPlay.Target.IsDead || !cardPlay.Target.HasPower<SoulBurnPower>()) return;
         var power = cardPlay.Target.GetPower<SoulBurnPower>();
         if (power == null) return;
-        await power.Detonate(ctx, Owner.Creature, IsUpgraded);
+        await power.Detonate(ctx, Owner.Creature);
     }
 }

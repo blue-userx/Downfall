@@ -2,7 +2,6 @@ using BaseLib.Utils;
 using Downfall.DownfallCode.Commands;
 using Downfall.DownfallCode.Powers;
 using Hexaghost.HexaghostCode.Core;
-using Hexaghost.HexaghostCode.Extensions;
 using Hexaghost.HexaghostCode.Interfaces;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
@@ -14,19 +13,22 @@ public class FlamesFromBeyond : HexaghostCardModel, IHasAfterlifeEffect
 {
     public FlamesFromBeyond() : base(2, CardType.Skill, CardRarity.Uncommon, TargetType.AllEnemies)
     {
-        this.WithAfterlife();
+        WithAfterlife();
         WithPower<SoulBurnPower>(10, 3);
     }
 
 
-    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay cardPlay)
+    public async Task AfterlifeEffect(PlayerChoiceContext ctx, CardPlay? cardPlay, bool wasExhausted,
+        bool causedByEthereal)
     {
-        await MyCommonActions.Apply<SoulBurnPower>(ctx, this, cardPlay.Target);
+        foreach (var soulBurnPower in CombatState!.HittableEnemies) await SoulBurnPower.SoulburnEffect(soulBurnPower);
+        await MyCommonActions.ApplyToAllEnemies<SoulBurnPower>(ctx, this);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await AfterlifeEffect(ctx, cardPlay);
-        await MyCommonActions.Apply<SoulBurnPower>(ctx, this, cardPlay.Target);
+        await AfterlifeEffect(ctx, cardPlay, false, false);
+        foreach (var soulBurnPower in CombatState!.HittableEnemies) await SoulBurnPower.SoulburnEffect(soulBurnPower);
+        await MyCommonActions.ApplyToAllEnemies<SoulBurnPower>(ctx, this);
     }
 }

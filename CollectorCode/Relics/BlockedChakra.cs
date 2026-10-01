@@ -1,35 +1,43 @@
 using BaseLib.Utils;
 using Collector.CollectorCode.Core;
-using Collector.CollectorCode.Events;
+using Collector.CollectorCode.Extensions;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Collector.CollectorCode.Relics;
 
 [Pool(typeof(CollectorRelicPool))]
-public class BlockedChakra : CollectorRelicModel, IPreventCollectedDraw
+public class BlockedChakra : CollectorRelicModel
 {
-    public BlockedChakra() : base(RelicRarity.Ancient)
+    public BlockedChakra() : base(RelicRarity.Shop)
     {
-        WithEnergy(1);
+        WithKindle(3);
+     
+        //WithEnergy(1);
     }
 
-    public bool PreventCollectedDraw(Player player)
+    public override async Task AfterCurrentHpChanged(Creature creature, decimal delta)
     {
-        return player == Owner && Owner.PlayerCombatState?.TurnNumber <= 4;
+        if(creature != Owner.Torchhead || delta >= 0) return;
+        var toTake = (int)Math.Ceiling(-delta / 3);
+        if (toTake <= 0) return;
+        Flash();
+        await CreatureCmd.Damage(new BlockingPlayerChoiceContext(), Owner.Creature, toTake,
+            DamageProps.nonCardHpLoss, null, null);
     }
+    
 
-    protected override async Task AfterSideTurnStart(PlayerChoiceContext ctx, CombatSide side,
+    public override async Task AfterSideTurnStart(CombatSide side,
         IReadOnlyList<Creature> participants,
         ICombatState combatState)
     {
-        if (side != Owner.Creature.Side)
-            return;
+        if (!participants.Contains(Owner.Creature)) return;
         Flash();
-        await PlayerCmd.GainEnergy(DynamicVars.Energy.IntValue, Owner);
+        await TorchheadCmd.Kindle(new BlockingPlayerChoiceContext(), this);
     }
+    
 }

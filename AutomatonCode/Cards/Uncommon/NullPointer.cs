@@ -1,27 +1,22 @@
-﻿using Automaton.AutomatonCode.Cards.Token;
-using Automaton.AutomatonCode.Core;
+﻿using Automaton.AutomatonCode.Core;
+using Automaton.AutomatonCode.Compile;
 using Automaton.AutomatonCode.Encode;
-using Automaton.AutomatonCode.Interfaces;
 using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Entities.Cards;
 
 namespace Automaton.AutomatonCode.Cards.Uncommon;
 
 [Pool(typeof(AutomatonCardPool))]
-public class NullPointer : AutomatonCardModel,
-    IEncodable
+public class NullPointer : AutomatonCardModel
 {
     public NullPointer() : base(1, CardType.Attack, CardRarity.Uncommon, TargetType.AnyEnemy)
     {
-        WithTip(CardKeyword.Unplayable);
-        WithDamage(12, 3);
-        WithBlock(12, 3);
-    }
-    
-    public void ApplyEncode(FunctionCard function, FunctionPosition position)
-    {
-        function.AddKeyword(CardKeyword.Unplayable);
+        WithEncode<BlockEncode>();
+        WithEncode<DamageEncode>();
+        WithCompile<FunctionCostCompile>();
+        WithDamage(10, 3);
+        WithBlock(10, 3);
+        WithEnergy(3);
     }
 
-    public IEnumerable<Encodable> Encodings => [new BlockEncode(), new DamageEncode()];
 }

@@ -16,14 +16,14 @@ public class TheTower : AwakenedCardModel
 {
     public TheTower() : base(2, CardType.Attack, CardRarity.Rare, TargetType.AllEnemies)
     {
-        WithCalculatedDamage(2, 2, DamageCalc, ValueProp.Move, 1, 1);
+        WithCalculatedDamage(2, 2, DamageCalc, DamageProps.card, 1, 1);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await CommonActions.CardAttack(this, cardPlay.Target, DynamicVars.CalculatedDamage).Execute(ctx);
+        await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
     }
 
     private static decimal DamageCalc(CardModel card, Creature? creature)

@@ -1,4 +1,8 @@
-﻿using MegaCrit.Sts2.Core.Entities.Powers;
+﻿using BaseLib.Abstracts;
+using BaseLib.Cards.Variables;
+using BaseLib.Extensions;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
@@ -8,11 +12,11 @@ namespace Downfall.DownfallCode.Abstract;
 
 public abstract class ConstructedPowerModel(
     PowerType powerType = PowerType.Buff,
-    PowerStackType stackType = PowerStackType.Counter) : HookedPowerModel
+    PowerStackType stackType = PowerStackType.Counter) : CustomPowerModel, IHasSecondAmount
 {
     private readonly List<AbstractTooltipSource<PowerModel>> _hoverTips = [];
     private readonly List<Func<PowerModel, IEnumerable<IHoverTip>>> _multiHoverTips = [];
-
+    protected virtual int? SecondAmount => null;
     private readonly List<DynamicVar> _newDynamicVars = [];
     public override PowerType Type => powerType;
     public override PowerStackType StackType => stackType;
@@ -22,7 +26,6 @@ public abstract class ConstructedPowerModel(
         .Concat(_multiHoverTips.SelectMany(e => e.Invoke(this)));
 
     public virtual bool ShouldRemoveDueToZero => true;
-
 
 
     protected ConstructedPowerModel WithUpgradedCardTip<T>(Action<T, PowerModel>? modifyTipCard = null)
@@ -36,7 +39,7 @@ public abstract class ConstructedPowerModel(
             return HoverTipFactory.FromCard(mutable);
         }));
     }
-    
+
     protected ConstructedPowerModel WithCardTip<T>(Action<T, PowerModel>? modifyTipCard = null)
         where T : CardModel
     {
@@ -66,9 +69,12 @@ public abstract class ConstructedPowerModel(
         return this;
     }
 
-    protected ConstructedPowerModel WithPower<T>(decimal i) where T : PowerModel
+    protected ConstructedPowerModel WithPower<T>(decimal i, bool showTooltip = true) where T : PowerModel
     {
-        return WithVars(new PowerVar<T>(i));
+        WithVars(new PowerVar<T>(i));
+        if (showTooltip)
+            WithTips(e => [HoverTipFactory.FromPower<T>(e.DynamicVars.Power<T>().IntValue)]);
+        return this;
     }
 
     protected ConstructedPowerModel WithVar(string name, decimal baseVal)
@@ -79,20 +85,27 @@ public abstract class ConstructedPowerModel(
 
     protected ConstructedPowerModel WithBlock(decimal baseVal)
     {
-        _newDynamicVars.Add(new BlockVar(baseVal, ValueProp.Move | ValueProp.Unpowered));
+        _newDynamicVars.Add(new BlockVar(baseVal, BlockProps.nonCardUnpowered));
         return this;
     }
-    
+
     protected ConstructedPowerModel WithCards(int baseVal)
     {
         _newDynamicVars.Add(new CardsVar(baseVal));
         return this;
     }
 
+    public ConstructedPowerModel WithEnergy(int baseVal)
+    {
+        _newDynamicVars.Add(new EnergyVar(baseVal));
+        WithEnergyTip();
+        return this;
+    }
+
 
     protected ConstructedPowerModel WithDamage(decimal baseVal)
     {
-        _newDynamicVars.Add(new DamageVar(baseVal, ValueProp.Move | ValueProp.Unpowered));
+        _newDynamicVars.Add(new DamageVar(baseVal, DamageProps.nonCardUnpowered));
         return this;
     }
 
@@ -116,9 +129,74 @@ public abstract class ConstructedPowerModel(
         return this;
     }
 
+
     public ConstructedPowerModel WithTip<T>() where T : AbstractModel
     {
         return WithTip(typeof(T));
     }
-}
 
+
+    public static IEnumerable<DynamicVar> FinishMakeCalculatedVar(
+        CalculatedVar var,
+        int baseVal,
+        int bonusVal)
+    {
+        switch (var)
+        {
+            case CustomCalculatedVar _:
+            case CustomCalculatedBlockVar _:
+                yield return new DynamicVar(var.Name + "Base", baseVal);
+                yield return new DynamicVar(var.Name + "Extra", bonusVal);
+                break;
+            case CustomCalculatedDamageVar _:
+                yield return new DynamicVar(var.Name + "Base", baseVal);
+                yield return new CustomExtraDamageVar(var.Name, bonusVal);
+                break;
+            case CalculatedDamageVar _:
+                yield return new CalculationBaseVar(baseVal);
+                yield return new ExtraDamageVar(bonusVal);
+                break;
+            default:
+                yield return new CalculationBaseVar(baseVal);
+                yield return new CalculationExtraVar(bonusVal);
+                break;
+        }
+
+        yield return var;
+    }
+
+
+    public static IEnumerable<DynamicVar> MakeCalculatedVar(
+        string name,
+        int baseVal,
+        Func<PowerModel, Creature?, Decimal> bonus,
+        int mult = 1)
+    {
+        return CustomCardModel.FinishMakeCalculatedVar(
+            new CustomCalculatedVar(name).WithMultiplier(bonus), baseVal, mult);
+    }
+
+    public static IEnumerable<DynamicVar> MakeCalculatedDamage(
+        string name,
+        int baseVal,
+        Func<PowerModel, Creature?, Decimal> bonus,
+        int mult = 1,
+        ValueProp props = ValueProp.Move)
+    {
+        return CustomCardModel.FinishMakeCalculatedVar(
+            new CustomCalculatedDamageVar(name, props).WithMultiplier(bonus), baseVal, mult);
+    }
+
+    public static IEnumerable<DynamicVar> MakeCalculatedBlock(
+        string name,
+        int baseVal,
+        Func<PowerModel, Creature?, Decimal> bonus,
+        int mult = 1,
+        ValueProp props = ValueProp.Move)
+    {
+        return CustomCardModel.FinishMakeCalculatedVar(
+            new CustomCalculatedBlockVar(name, props).WithMultiplier(bonus), baseVal, mult);
+    }
+
+    public string GetSecondAmount() => SecondAmount.ToString() ?? "";
+}

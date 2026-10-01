@@ -1,8 +1,10 @@
 ﻿using BaseLib.Abstracts;
 using BaseLib.Patches.Content;
+using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
-using Collector.CollectorCode.Extensions;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Context;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.HoverTips;
@@ -14,11 +16,11 @@ using MegaCrit.Sts2.Core.Saves.Runs;
 
 namespace Collector.CollectorCode.Rewards;
 
-public class CollectibleReward(CardModel card, Player player) : CustomReward(player)
+[Obsolete]
+public class CollectibleReward(ModelId encounterModel, Player player, bool upgraded) : CustomReward(player)
 {
     [CustomEnum] public static RewardType CustomCardRewardType;
-
-    private bool _wasTaken;
+    
     protected override RewardType RewardType => CustomCardRewardType;
 
     private static string RewardIcon => ImageHelper.GetImagePath("ui/reward_screen/reward_icon_special_card.png");
@@ -31,47 +33,52 @@ public class CollectibleReward(CardModel card, Player player) : CustomReward(pla
     {
         get
         {
-            var desc = Player.CanAffordEssence(3)
-                ? new LocString("gameplay_ui", "COLLECTIBLE_REWARD")
-                : new LocString("gameplay_ui", "COLLECTIBLE_REWARD_CANT_AFFORD");
-            desc.Add("Card", card.Title);
-            desc.Add("essence", 3);
-            desc.Add("current", Player.GetEssence());
+            var desc = new LocString("gameplay_ui", "COLLECTIBLE_REWARD");
+            desc.Add("Card", Card.Title);
             return desc;
         }
     }
 
     protected override IEnumerable<IHoverTip> ExtraHoverTips =>
-        [HoverTipFactory.FromCard(card)];
+        [HoverTipFactory.FromCard(Card, upgraded)];
 
-    public override bool IsPopulated => card != null;
+    public override bool IsPopulated => _card != null;
 
     public override CreateRewardFromSave<CustomReward> DeserializeMethod => Deserialize;
 
     public override void Populate()
     {
+        _card = ModelDb.CardPool<CollectibleCardPool>().AllCards.FirstOrDefault(c => c is ICollectible g && g.GetEncounterModel()?.Id == encounterModel);
     }
 
-    protected override Task<bool> OnSelect()
-    {
-        if (!Player.CanAffordEssence(3)) return Task.FromResult(false);
-        CollectiblesModel.SyncAdd(Player, card, 3);
-        _wasTaken = true;
-        return Task.FromResult(true);
+    private CardModel? _card;
+    private CardModel Card => _card!;
+
+    protected override async Task<bool> OnSelect()
+    {  
+        if (LocalContext.NetId == null) return false;
+        Card.AssertCanonical();
+        var runCard = Player.RunState.CreateCard(Card, Player);
+        if (upgraded && runCard.IsUpgradable) CardCmd.Upgrade(runCard);
+        var result = await CardPileCmd.Add(runCard, PileType.Deck);
+        CardCmd.PreviewCardPileAdd(result, 0.4f);
+        runCard.AssertMutable();
+        
+        Player.RunState.CurrentMapPointHistoryEntry?
+            .GetEntry(LocalContext.NetId.Value)
+            .CardChoices.Add(new CardChoiceHistoryEntry(runCard, true));
+        return true;
     }
+    
 
     public override void OnSkipped()
     {
-        if (_wasTaken || LocalContext.NetId == null) return;
+        if (LocalContext.NetId == null) return;
+        var runCard = Player.RunState.CreateCard(Card, Player);
+        if (upgraded && runCard.IsUpgradable) CardCmd.Upgrade(runCard);
         Player.RunState.CurrentMapPointHistoryEntry?
             .GetEntry(LocalContext.NetId.Value)
-            .CardChoices.Add(new CardChoiceHistoryEntry(card, false));
-        CustomMessageWrapper.Send(new CollectibleRewardMessage
-        {
-            WasSkipped = true,
-            Card = card.ToSerializable(),
-            EssenceCost = 0
-        });
+            .CardChoices.Add(new CardChoiceHistoryEntry(runCard, false));
     }
 
     public override SerializableReward ToSerializable()
@@ -79,15 +86,14 @@ public class CollectibleReward(CardModel card, Player player) : CustomReward(pla
         return new SerializableReward
         {
             RewardType = CustomCardRewardType,
-            SpecialCard = card?.ToSerializable()
+            PredeterminedModelId = encounterModel,
+            WasGoldStolenBack = upgraded
         };
     }
 
-    public static CustomReward Deserialize(SerializableReward save, Player player)
+    private static CustomReward Deserialize(SerializableReward save, Player player)
     {
-        var cardModel = CardModel.FromSerializable(save.SpecialCard!);
-        CollectiblesModel.AddCollectible(player, cardModel);
-        return new CollectibleReward(cardModel, player);
+        return new CollectibleReward(save.PredeterminedModelId, player, save.WasGoldStolenBack);
     }
 
     public override void MarkContentAsSeen()

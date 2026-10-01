@@ -1,10 +1,11 @@
 ﻿using Downfall.DownfallCode.Abstract;
-using Downfall.DownfallCode.Utils.Sound;
+using Downfall.DownfallCode.Config;
 using Godot;
 using Hexaghost.HexaghostCode.Cards.Basic;
 using Hexaghost.HexaghostCode.Relics;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Characters;
+using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Models;
@@ -16,7 +17,7 @@ public class Hexaghost : DownfallCharacterModel
 #pragma warning restore STS001
 {
     private static readonly Color Color = new(0x723E6DFF);
-    public override Color EnergyLabelOutlineColor  => Color;
+    public override Color EnergyLabelOutlineColor => Color;
     public override string ModId => HexaghostMainFile.ModId;
     public override string CharId => "Hexaghost";
     public override Color NameColor => Color;
@@ -27,7 +28,10 @@ public class Hexaghost : DownfallCharacterModel
     public override float CardColorV => 0.8f;
     public override Color MapDrawingColor => Color;
 
-    public override CharacterGender Gender => CharacterGender.Neutral;
+    public override bool HideFromVanillaCharacterSelect => DownfallConfig.HideHexaghost;
+    public override bool HideInCompendium => DownfallConfig.HideHexaghost;
+
+    public override CharacterGender Gender => CharacterGender.Feminine;
     protected override CharacterModel? UnlocksAfterRunAs => null;
     public override int StartingHp => 66;
     public override int StartingGold => 99;
@@ -48,11 +52,6 @@ public class Hexaghost : DownfallCharacterModel
     ];
 
 
-    public override ModSoundEffect CharacterSelectSfxEntry => new(
-        new ModSoundEntry("res://Hexaghost/audio/character_select/SOTE_SFX_BossOrbIgnite1_v2.ogg", 1, 0.1f, 1, 5),
-        new ModSoundEntry("res://Hexaghost/audio/character_select/SOTE_SFX_BossOrbIgnite2_v2.ogg", 1, 0.1f, 1, 5)
-    );
-
     public override IReadOnlyList<RelicModel> StartingRelics =>
     [
         ModelDb.Relic<SpiritBrand>()
@@ -70,21 +69,16 @@ public class Hexaghost : DownfallCharacterModel
 
 public class HexaghostRelicPool : DownfallRelicPool<Hexaghost>;
 
-public abstract class HexaghostRelicModel(RelicRarity rarity, bool autoAdd = true) : DownfallRelicModel<Hexaghost>(rarity, autoAdd);
+public abstract class HexaghostRelicModel(RelicRarity rarity, bool autoAdd = true)
+    : DownfallRelicModel<Hexaghost>(rarity, autoAdd);
 
 public abstract class HexaghostPowerModel(
     PowerType powerType = PowerType.Buff,
     PowerStackType powerStackType = PowerStackType.Counter) : DownfallPowerModel<Hexaghost>(powerType, powerStackType);
 
-public abstract class HexaghostCardModel(
-    int cost,
-    CardType type,
-    CardRarity rarity,
-    TargetType targetType,
-    bool showInCardLibrary = true,
-    bool autoAdd = true)
-    : DownfallCardModel<Hexaghost>(cost, type, rarity, targetType, showInCardLibrary, autoAdd);
-
 public class HexaghostPotionPool : DownfallPotionPool<Hexaghost>;
 
 public class HexaghostCardPool : DownfallCardPool<Hexaghost>;
+
+public abstract class HexaghostPotionModel(PotionRarity potionRarity, PotionUsage potionUsage, TargetType targetType) :
+    DownfallPotionModel<Hexaghost>(potionRarity, potionUsage, targetType);

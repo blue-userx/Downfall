@@ -1,15 +1,15 @@
 ﻿using Awakened.AwakenedCode.Cards.Token;
 using Awakened.AwakenedCode.Core;
 using Awakened.AwakenedCode.Events;
+using Awakened.AwakenedCode.Vfx;
 using BaseLib.Abstracts;
 using BaseLib.Patches.Content;
+using Downfall.DownfallCode.Utils.UI;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.Rooms;
-using MegaCrit.Sts2.Core.Random;
 
 namespace Awakened.AwakenedCode.Piles;
 
@@ -18,6 +18,8 @@ public class AwakenedPile() : CustomPile(Spellbook)
     [CustomEnum] public static PileType Spellbook;
 
     private readonly List<CardModel> _dynamicTypes = [];
+
+    private Type? _nextSpellType;
 
     public CardModel? NextSpell { get; private set; }
 
@@ -35,36 +37,41 @@ public class AwakenedPile() : CustomPile(Spellbook)
 
     public override Vector2 GetTargetPosition(CardModel model, Vector2 size)
     {
-        var creatureNode = NCombatRoom.Instance?.GetCreatureNode(model.Owner.Creature);
-        return creatureNode?.GlobalPosition ?? Vector2.Zero;
+        return NCustomCombatCardPile.GetPositionFor<NSpellbookButton>();
     }
 
-
-    public void SetNextSpell(Rng rng)
+    public void SetNextSpell(Player player)
     {
-        var available = Cards.Where(c => c != NextSpell).ToList();
+        var available = Cards
+            .Where(c => c.GetType() != _nextSpellType)
+            .ToList();
+
         NextSpell = available.Count > 0
-            ? rng.NextItem(available)
+            ? player.RunState.Rng.CombatCardSelection.NextItem(available)
             : Cards.Count > 0
                 ? Cards[0]
                 : null;
+
+        _nextSpellType = NextSpell?.GetType();
     }
 
     public void Refresh(Player owner)
     {
         var state = owner.Creature.CombatState;
         if (state == null) return;
-
-        var rng = state.RunState.Rng.CombatCardGeneration;
+        var previousType = _nextSpellType ?? NextSpell?.GetType();
 
         foreach (var card in Cards.ToList())
             card.RemoveFromState();
 
         AddBaseSpells(owner, state);
 
-        foreach (var type in _dynamicTypes) CreateAndAddSpell(owner, state, type);
+        foreach (var type in _dynamicTypes)
+            CreateAndAddSpell(owner, state, type);
 
-        SetNextSpell(rng);
+        if (previousType == null) return;
+        NextSpell = Cards.FirstOrDefault(c => c.GetType() == previousType);
+        _nextSpellType = NextSpell?.GetType();
     }
 
     private void AddBaseSpells(Player owner, ICombatState state)

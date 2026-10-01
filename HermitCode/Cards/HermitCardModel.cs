@@ -4,7 +4,6 @@ using Hermit.HermitCode.Core;
 using Hermit.HermitCode.CustomEnums;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.HoverTips;
-using MegaCrit.Sts2.Core.Models;
 
 namespace Hermit.HermitCode.Cards;
 
@@ -23,6 +22,6 @@ public abstract class HermitCardModel
         WithTips(e => e is IHasDeadOnEffect ? [HoverTipFactory.FromKeyword(HermitKeywords.DeadOn)] : []);
     }
 
-    protected override bool ShouldGlowGoldInternal => this is IHasDeadOnEffect { IsDeadOnInHand: true };
+    protected override bool ShouldGlowGoldInternal =>
+        this is IHasDeadOnEffect && HermitCmd.IsDeadOn(this);
 }
-

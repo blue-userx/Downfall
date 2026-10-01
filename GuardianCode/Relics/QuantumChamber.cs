@@ -1,5 +1,6 @@
 using BaseLib.Utils;
 using Guardian.GuardianCode.Core;
+using Guardian.GuardianCode.CustomEnums;
 using Guardian.GuardianCode.Events;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -10,8 +11,15 @@ using MegaCrit.Sts2.Core.Models;
 namespace Guardian.GuardianCode.Relics;
 
 [Pool(typeof(GuardianRelicPool))]
-public class QuantumChamber() : GuardianRelicModel(RelicRarity.Rare), IAfterCardEntersStasis
+public class QuantumChamber : GuardianRelicModel, IAfterCardEntersStasis
 {
+
+    public QuantumChamber() : base(RelicRarity.Rare)
+    {
+        WithTip(GuardianTip.Accelerate);
+        WithTip(GuardianTip.Stasis);
+    }
+    
     private bool _usedThisTurn;
 
     public async Task AfterCardEntersStasis(PlayerChoiceContext ctx, CardModel card, AbstractModel source)

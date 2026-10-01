@@ -1,6 +1,7 @@
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.Compatibility;
 using Hexaghost.HexaghostCode.Core;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
@@ -14,7 +15,7 @@ namespace Hexaghost.HexaghostCode.Cards.Uncommon;
 [Pool(typeof(HexaghostCardPool))]
 public class WorthySacrifice : HexaghostCardModel
 {
-    public WorthySacrifice() : base(0, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
+    public WorthySacrifice() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.Self)
     {
         WithCards(2);
         WithKeywords(CardKeyword.Exhaust);
@@ -24,9 +25,9 @@ public class WorthySacrifice : HexaghostCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var cards = (await DownfallCardCmd.SelectFromHand(ctx, CardSelectorPrefs.ExhaustSelectionPrompt, this))
+        var cards = (await DownfallCardSelectionCmd.SelectFromHand(ctx, CardSelectorPrefs.ExhaustSelectionPrompt, this))
             .ToList();
-        foreach (var card in cards) await CardCmd.Exhaust(ctx, card);
+        foreach (var card in cards) await CardCmdCompatibility.Exhaust(ctx, card);
 
         await TransformCards(cards, CardType.Attack, CardType.Skill);
         await TransformCards(cards, CardType.Skill, CardType.Attack);
@@ -44,12 +45,9 @@ public class WorthySacrifice : HexaghostCardModel
         var newCards = CardFactory.GetDistinctForCombat(Owner, pool, count, Owner.RunState.Rng.CombatCardGeneration)
             .ToList();
         if (IsUpgraded)
-        {
             foreach (var card in newCards.Where(card => card.IsUpgradable))
-            {
                 CardCmd.Upgrade(card);
-            }
-        }
+
         await CardPileCmd.AddGeneratedCardsToCombat(newCards, PileType.Hand, Owner);
     }
 }

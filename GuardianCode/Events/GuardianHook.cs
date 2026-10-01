@@ -1,5 +1,7 @@
-﻿using Downfall.DownfallCode.Events;
+﻿using BaseLib.Utils;
+using Downfall.DownfallCode.Events;
 using Guardian.GuardianCode.Core;
+using Guardian.GuardianCode.Interfaces;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -16,56 +18,86 @@ public static class GuardianHook
         GuardianModeModel oldMode,
         GuardianModeModel newMode)
     {
-        return DownfallHook.Dispatch<IAfterGuardianModeChange>(cs,
+        return HookUtils.Dispatch<IAfterGuardianModeChange>(cs,
             m => m.AfterGuardianModeChange(ctx, player, oldMode, newMode));
     }
-    
+
     public static Task AfterGuardianModeChangeEarly(ICombatState cs, PlayerChoiceContext ctx, Player player,
         GuardianModeModel oldMode,
         GuardianModeModel newMode)
     {
-        return DownfallHook.Dispatch<IAfterGuardianModeChangeEarly>(cs,
+        return HookUtils.Dispatch<IAfterGuardianModeChangeEarly>(cs,
             m => m.AfterGuardianModeChangeEarly(ctx, player, oldMode, newMode));
     }
-
 
 
     public static Task BeforeCardEntersStasis(ICombatState cs, PlayerChoiceContext ctx, CardModel card,
         AbstractModel source)
     {
-        return DownfallHook.Dispatch<IBeforeCardEntersStasis>(cs, ctx,
+        return HookUtils.Dispatch<IBeforeCardEntersStasis>(cs, ctx,
             m => m.BeforeCardEntersStasis(ctx, card, source));
     }
 
     public static Task AfterCardEntersStasis(ICombatState cs, PlayerChoiceContext ctx, CardModel card,
         AbstractModel source)
     {
-        return DownfallHook.Dispatch<IAfterCardEntersStasis>(cs, ctx,
+        return HookUtils.Dispatch<IAfterCardEntersStasis>(cs, ctx,
             m => m.AfterCardEntersStasis(ctx, card, source));
+    }
+
+    /// <summary>
+    ///     Overloads for callers with no <see cref="PlayerChoiceContext" /> at hand (e.g. a
+    ///     <c>IModifyCardPlayResultLocation</c> redirect into Stasis, which never calls
+    ///     <see cref="GuardianCmd.PutIntoStasis" />) — a fresh context is created per listener via
+    ///     <see cref="MyHookUtils.DispatchWithContext{THook}" />.
+    /// </summary>
+    public static Task BeforeCardEntersStasis(Player player, CardModel card, AbstractModel source)
+    {
+        return MyHookUtils.DispatchWithContext<IBeforeCardEntersStasis>(player,
+            (m, ctx) => m.BeforeCardEntersStasis(ctx, card, source));
+    }
+
+    public static Task AfterCardEntersStasis(Player player, CardModel card, AbstractModel source)
+    {
+        return MyHookUtils.DispatchWithContext<IAfterCardEntersStasis>(player,
+            (m, ctx) => m.AfterCardEntersStasis(ctx, card, source));
     }
 
 
     public static decimal ModifyGemEffect(ICombatState cs, GemModel gem, decimal baseValue, CardModel? card)
     {
-        return DownfallHook.Aggregate<IModifyGemEffect, decimal>(cs, baseValue,
+        return HookUtils.Aggregate<IModifyGemEffect, decimal>(cs, baseValue,
             (m, val) => m.ModifyGemEffect(gem, val, card));
     }
 
-    public static Task AfterGemPlayed(ICombatState cs, PlayerChoiceContext ctx, GemModel gemModel, CardPlay? cardPlay)
+    public static Task AfterGemPlayed(ICombatState? cs, PlayerChoiceContext ctx, GemModel gemModel, CardPlay? cardPlay)
     {
-        return DownfallHook.Dispatch<Alias>(cs, ctx,
+        return HookUtils.Dispatch<Alias>(cs, ctx,
             m => m.AfterGemPlayed(ctx, gemModel, cardPlay));
     }
 
     public static Task AfterCardTick(ICombatState cs, PlayerChoiceContext ctx, CardModel card, Player player)
     {
-        return DownfallHook.Dispatch<IAfterCardTick>(cs, ctx,
+        return HookUtils.Dispatch<IAfterCardTick>(cs, ctx,
             m => m.AfterCardTick(ctx, card, player));
     }
 
-    public static decimal ModifyBraceAmount(ICombatState cs, Player player, decimal amount)
+    public static decimal ModifyBraceAmount(ICombatState cs, Player player, decimal amount,
+        out IEnumerable<IModifyBraceAmount> modifiers)
     {
-        return DownfallHook.Aggregate<IModifyBraceAmount, decimal>(cs, amount,
-            (m, val) => m.ModifyBraceAmount(player, amount));
+        return HookUtils.Modify(cs, amount,
+            (m, val) => m.ModifyBraceAmount(player, val), out modifiers);
+    }
+
+    public static Task AfterModifyingBraceAmount(ICombatState cs, Player player, decimal modifiedAmount,
+        IEnumerable<IModifyBraceAmount> modifiers)
+    {
+        return HookUtils.AfterModifying(cs, modifiers,
+            m => m.AfterModifyingBraceAmount(player, modifiedAmount));
+    }
+
+    public static Task AfterBrace(ICombatState cs, Player player, decimal amount)
+    {
+        return HookUtils.Dispatch<IAfterBrace>(cs, m => m.AfterBrace(player, amount));
     }
 }

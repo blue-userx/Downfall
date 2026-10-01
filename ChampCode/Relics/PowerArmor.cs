@@ -11,17 +11,18 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace Champ.ChampCode.Relics;
+
 [Pool(typeof(ChampRelicPool))]
 public class PowerArmor : ChampRelicModel
 {
+    private const int Cap = 10;
+
     public PowerArmor() : base(RelicRarity.Shop)
     {
         WithTip<StrengthPower>();
         WithTip<VigorPower>();
         WithTip<CounterPower>();
     }
-    
-    private const int Cap = 10;
 
     public override async Task BeforeHandDraw(
         Player player,
@@ -33,10 +34,11 @@ public class PowerArmor : ChampRelicModel
         await PowerCmd.Apply<StrengthPower>(ctx, Owner.Creature, 2, Owner.Creature, null);
     }
 
-    public override decimal ModifyPowerAmountGivenAdditive(PowerModel power, Creature giver, decimal amount, Creature? target,
+    public override decimal ModifyPowerAmountGivenAdditive(PowerModel power, Creature giver, decimal amount,
+        Creature? target,
         CardModel? cardSource)
     {
-        if (target != Owner.Creature || power is not (VigorPower or CounterPower))
+        if (target != Owner.Creature || power is not (VigorPower or CounterPower) || amount <= 0)
             return 0;
 
         var headroom = Cap - power.Amount;

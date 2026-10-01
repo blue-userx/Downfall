@@ -1,31 +1,31 @@
-﻿using Automaton.AutomatonCode.Cards.Status;
-using Automaton.AutomatonCode.Core;
+﻿using Automaton.AutomatonCode.Core;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Models.Powers;
+using MegaCrit.Sts2.Core.Models;
 
 namespace Automaton.AutomatonCode.Cards.Rare;
 
 [Pool(typeof(AutomatonCardPool))]
 public class ProtoShield : AutomatonCardModel
 {
-    public ProtoShield() : base(1, CardType.Skill, CardRarity.Rare, TargetType.Self)
+    public ProtoShield() : base(2, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
-        WithBlock(8, 2);
-        WithPower<PlatingPower>(2, 1);
-        this.WithTip<Error>();
-        WithCards(1);
+        WithBlock(11, 3);
+        WithKeyword(CardKeyword.Ethereal);
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
 
-    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
+
+    public override async Task AfterCardDrawn(
+        PlayerChoiceContext ctx,
+        CardModel card,
+        bool fromHandDraw)
     {
-        await CommonActions.CardBlock(this, cardPlay);
-        await CommonActions.ApplySelf<PlatingPower>(ctx, this);
-        await DownfallCardCmd.GiveCards<Error>(Owner, PileType.Discard, DynamicVars.Cards.IntValue, CardPilePosition.Random);
+        if (card != this) return;
+        await DownfallCreatureCmd.GainBlock(Owner.Creature, this);
     }
 }

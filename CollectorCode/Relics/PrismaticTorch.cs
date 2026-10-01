@@ -1,15 +1,12 @@
 using BaseLib.Utils;
-using Collector.CollectorCode.Cards.Token;
 using Collector.CollectorCode.Core;
-using Downfall.DownfallCode.Abstract;
-using Downfall.DownfallCode.Commands;
 using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Combat.History.Entries;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
-using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace Collector.CollectorCode.Relics;
 
@@ -18,7 +15,7 @@ public class PrismaticTorch : CollectorRelicModel
 {
     public PrismaticTorch() : base(RelicRarity.Starter)
     {
-        WithTip<Ember>();
+        WithKindle(7);
     }
 
     public override async Task BeforeHandDraw(
@@ -27,21 +24,32 @@ public class PrismaticTorch : CollectorRelicModel
         ICombatState combatState)
     {
         if (player != Owner || Owner.PlayerCombatState is not { TurnNumber: 1 }) return;
-        await DownfallCardCmd.GiveCard<Ember>(Owner, PileType.Hand);
-        CardResourceRegistry.Get<CollectorEnergy>()?.Gain(Owner, 1);
+        await TorchheadCmd.Kindle(ctx, this);
         Flash();
     }
-
-    public override Task AfterCardExhausted(PlayerChoiceContext choiceContext, CardModel card, bool causedByEthereal)
+    /*
+    
+    public override Task AfterCombatEnd(CombatRoom room)
     {
-        var state = Owner.Creature.CombatState;
-        if (card.Owner != Owner ||
-            card is not Ember ||
-            CombatManager.Instance.History.Entries.OfType<CardExhaustedEntry>().Any(e =>
-                e.HappenedThisTurn(state) && e.Card is Ember && e.Card != card)
-           ) return Task.CompletedTask;
-        CardResourceRegistry.Get<CollectorEnergy>()?.Gain(Owner, 1);
+        if (room.RoomType is not (RoomType.Elite or RoomType.Boss)) return Task.CompletedTask;
+        var existsCard = ModelDb.CardPool<CollectibleCardPool>().AllCards.Any(c => c is ICollectible col && col.GetEncounterModel().Id == room.Encounter.Id);
+        if (!existsCard) return Task.CompletedTask;
+        foreach (var player in room.CombatState.Players.Where(p => p.Character is Core.Collector))
+        {
+            room.AddExtraReward(player, new CollectibleReward(room.Encounter.Id, player, true));
+        }
+        return Task.CompletedTask;
+    }*/
+
+    public override bool TryModifyCardRewardOptions(Player player, List<CardCreationResult> cardRewardOptions, CardCreationOptions creationOptions)
+    {
+        return Owner == player && CollectorRewardsCmd.TryAddCollectiblesReward(this, player, cardRewardOptions, creationOptions,  card =>  CardCmd.Upgrade(card));
+    }
+    
+    /*
+    public override Task AfterModifyingCardRewardOptions()
+    {
         Flash();
         return Task.CompletedTask;
-    }
+    }*/
 }

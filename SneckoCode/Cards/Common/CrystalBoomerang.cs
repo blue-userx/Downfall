@@ -15,15 +15,16 @@ public class CrystalBoomerang : SneckoCardModel
     {
         WithBlock(5, 3);
         WithCards(1);
+        WithTip(DownfallTip.Offclass);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        var card = (await DownfallCardCmd.SelectFromCards(ctx, Owner.GetDiscard(),
-            DownfallCardSelectorPrefs.ToHandSelectionPrompt, this, true)).FirstOrDefault();
+        var card = (await DownfallCardSelectionCmd.SelectFromCombatPile(ctx, PileType.Discard.GetPile(Owner),
+            DownfallCardSelectorPrefs.ToHandSelectionPrompt, this)).FirstOrDefault();
         if (card == null) return;
         await CardPileCmd.Add(card, PileType.Hand);
-        if (SneckoCmd.IsOffclass(card))
+        if (DownfallCmd.IsOffclass(card))
             await CommonActions.CardBlock(this, cardPlay);
     }
 }

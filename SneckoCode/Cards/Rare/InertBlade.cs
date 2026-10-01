@@ -1,5 +1,4 @@
 using BaseLib.Utils;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -12,10 +11,10 @@ public class InertBlade : SneckoCardModel
 {
     public InertBlade() : base(0, CardType.Attack, CardRarity.Rare, TargetType.AnyEnemy)
     {
-        WithDamage(10, 3);
+        WithDamage(9, 3);
         WithCards(3, 1);
+        WithBlock(9, 3);
         WithPower<StrengthPower>(3, 1);
-        WithEnergy(1, 1);
     }
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
@@ -25,8 +24,8 @@ public class InertBlade : SneckoCardModel
         if (cost < 1) return;
         await CommonActions.Draw(this, ctx);
         if (cost < 2) return;
-        await CommonActions.ApplySelf<StrengthPower>(ctx, this);
+        await CommonActions.CardBlock(this, cardPlay);
         if (cost < 3) return;
-        await PlayerCmd.GainEnergy(DynamicVars.Energy.BaseValue, Owner);
+        await CommonActions.ApplySelf<StrengthPower>(ctx, this);
     }
 }

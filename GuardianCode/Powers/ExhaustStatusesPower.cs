@@ -1,3 +1,4 @@
+using Downfall.DownfallCode.Compatibility;
 using Guardian.GuardianCode.Core;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -13,6 +14,9 @@ public class ExhaustStatusesPower : GuardianPowerModel
     private int _triggers;
     public override bool ShouldReceiveCombatHooks => true;
 
+
+    public override int DisplayAmount => Math.Max(Amount - _triggers, 0);
+
     public override async Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
     {
         if (card.Owner != Owner.Player) return;
@@ -20,14 +24,16 @@ public class ExhaustStatusesPower : GuardianPowerModel
         if (card.Type is not (CardType.Status or CardType.Curse)) return;
 
         _triggers++;
-        await CardCmd.Exhaust(choiceContext, card);
+        await CardCmdCompatibility.Exhaust(choiceContext, card);
         await CardPileCmd.Draw(choiceContext, 1, Owner.Player);
+        InvokeDisplayAmountChanged();
     }
 
     public override Task BeforeHandDraw(Player player, PlayerChoiceContext choiceContext, ICombatState combatState)
     {
         if (player == Owner.Player)
             _triggers = 0;
+        InvokeDisplayAmountChanged();
         return Task.CompletedTask;
     }
 }

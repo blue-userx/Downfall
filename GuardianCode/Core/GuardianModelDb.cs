@@ -4,28 +4,26 @@ namespace Guardian.GuardianCode.Core;
 
 public static class GuardianModelDb
 {
-    private static IEnumerable<GemModel>? _allGems;
-
     public static IEnumerable<GemModel> AllGems
     {
         get
         {
-            if (_allGems != null) return _allGems;
+            if (field != null) return field;
 
-            return _allGems = ModelDb.AllAbstractModelSubtypes
+            return field = ModelDb.AllAbstractModelSubtypes
                 .Where(t => t.IsSubclassOf(typeof(GemModel)))
-                .Select(t => (GemModel)ModelDb.Get(t))
+                .Select(t => ModelDb.GetById<GemModel>(ModelDb.GetId(t)))
                 .ToList();
         }
     }
 
     public static T GuardianMode<T>() where T : GuardianModeModel
     {
-        return ModelDb.Get<T>();
+        return ModelDb.GetById<T>(ModelDb.GetId<T>());
     }
 
     public static T Gem<T>() where T : GemModel
     {
-        return ModelDb.Get<T>();
+        return ModelDb.GetById<T>(ModelDb.GetId<T>());
     }
 }

@@ -1,9 +1,10 @@
-﻿using MegaCrit.Sts2.Core.Animation;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.ValueProps;
+using SlimeBoss.SlimeBossCode.Cards.Token;
 using SlimeBoss.SlimeBossCode.Extensions;
 
 namespace SlimeBoss.SlimeBossCode.Slimes;
@@ -12,23 +13,23 @@ public class CultistSlime : SlimeModel
 {
     protected override IEnumerable<DynamicVar> CanonicalVars =>
     [
-        new DamageVar(6, ValueProp.Move),
-        new("Increase", 1)
+        new DamageVar(4, DamageProps.nonCardUnpowered)
     ];
     
-    public override SlimeType SlimeType => SlimeType.Specialist;
+    protected override string? SkinName => "cultist";
 
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
+    public override async Task Command(PlayerChoiceContext ctx, Creature? forcedTarget = null)
     {
-        return SetupAnimationState(controller, "idle", hitName: "damage");
+        var attack = DamageCmd.Attack(DynamicVars.Damage.BaseValue).FromSlime(this);
+        attack = forcedTarget != null ? attack.Targeting(forcedTarget) : attack.TargetingRandomOpponents(CombatState);
+        await attack.Execute(ctx);
     }
-
-    public override async Task Command(PlayerChoiceContext ctx)
+    
+    public override Task AfterCardPlayed(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
-        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
-            .FromSlime(this)
-            .TargetingRandomOpponents(CombatState)
-            .Execute(ctx);
-        DynamicVars.Damage.UpgradeValueBy(DynamicVars["Increase"].BaseValue);
+        if (cardPlay.Card.Owner.Creature != PetOwner || cardPlay.Card.Type != CardType.Power) return Task.CompletedTask;
+
+        DynamicVars.Damage.BaseValue += 1;
+        return Task.CompletedTask;
     }
 }

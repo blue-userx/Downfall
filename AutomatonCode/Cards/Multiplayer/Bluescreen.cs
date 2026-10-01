@@ -15,16 +15,16 @@ public class Bluescreen : AutomatonCardModel
     public Bluescreen() : base(1, CardType.Skill, CardRarity.Uncommon, TargetType.AnyAlly)
     {
         WithBlock(12, 5);
-        this.WithTip<Error>();
+        WithTip<Error>();
     }
-    
+
     public override CardMultiplayerConstraint MultiplayerConstraint => CardMultiplayerConstraint.MultiplayerOnly;
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         var player = cardPlay.Target?.Player;
         if (player == null) return;
-        await CreatureCmd.GainBlock(player.Creature, DynamicVars.Block.BaseValue, ValueProp.Move, cardPlay);
-        await DownfallCardCmd.GiveCard<Error>(player, PileType.Draw, CardPilePosition.Top);
+        await CreatureCmd.GainBlock(player.Creature, DynamicVars.Block.BaseValue, BlockProps.card, cardPlay);
+        await DownfallCardCmd.GiveCard<Error>(Owner, PileType.Draw, CardPilePosition.Top);
     }
 }

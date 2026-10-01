@@ -10,13 +10,19 @@ namespace Hexaghost.HexaghostCode.Powers;
 
 public class BroilingFlamesPower : HexaghostPowerModel
 {
+    public BroilingFlamesPower()
+    {
+        WithTip<SoulBurnPower>();
+    }
+
     public override async Task AfterAttack(PlayerChoiceContext ctx, AttackCommand command)
     {
         if (command.Results.SelectMany(r => r).All(e => e.Receiver != Owner)) return;
         await PowerCmd.Apply<SoulBurnPower>(ctx, Owner, Amount, command.Attacker, null);
     }
 
-    public override Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+    public override Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side,
+        IEnumerable<Creature> participants)
     {
         return !participants.Contains(Owner) ? Task.CompletedTask : PowerCmd.Remove(this);
     }

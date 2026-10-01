@@ -5,6 +5,7 @@ using Guardian.GuardianCode.DynamicVars;
 using Guardian.GuardianCode.Events;
 using Guardian.GuardianCode.Extensions;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
@@ -16,11 +17,12 @@ public class SapphireGem : GemModel
     public override IEnumerable<IHoverTip> ExtraHoverTips => [HoverTipFactory.Static(GuardianTip.Brace)];
     protected override IEnumerable<DynamicVar> CanonicalVars => [new GemVar(4)];
     public override Color GemColor => new(0x0624BEFF);
-    public override CardRarity Rarity => CardRarity.Common;
-
-    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay)
+	
+    public override CardRarity Rarity => CardRarity.Common;//Todo: Basic next update.
+    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay,
+        IEnumerable<Player> targetPlayers)
     {
-        var effect = GuardianHook.ModifyGemEffect(CombatState, this, DynamicVars.Gem().BaseValue, Card);
-        await GuardianCmd.Brace(ctx, Player, effect);
+        var effect = GuardianHook.ModifyGemEffect(CombatState, this, DynamicVars.Gem.BaseValue, Card);
+        foreach (var player in targetPlayers) await GuardianCmd.Brace(ctx, player, effect);
     }
 }

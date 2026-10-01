@@ -1,0 +1,43 @@
+﻿{
+  "DOWNFALL-DOWNFALL.title": "Downfall",
+  "DOWNFALL-TEAM.header": "Development",
+  "DOWNFALL-TEAM.names": "Lead Developer||lamali\nConcept & Balance||Blue Guy",
+
+  "DOWNFALL-HELP.header": "Programming & Bug Fixes",
+  "DOWNFALL-HELP.names": "Bug Fixes & Code Cleanup||Tsukimaru Oshawott\nBug Fixes||Doobs",
+
+  "DOWNFALL-ART.header": "Art",
+  "DOWNFALL-ART.names": "GoofballMcgee\nChimedragon\nNewGuyJack\nDawnablesAwakened\nMalleable Frog",
+
+  "DOWNFALL-SOUND.header": "Sound",
+  "DOWNFALL-SOUND.names": "Hundotte",
+  
+  "DOWNFALL-LOC.header": "Localization",
+  
+  "DOWNFALL-LOC_FRA.header": "French",
+  "DOWNFALL-LOC_FRA.names": "MisterShaokahn\nKerlazeur\nNumata",
+
+  "DOWNFALL-LOC_KOR.header": "Korean",
+  "DOWNFALL-LOC_KOR.names": "Donan\nCeeu",
+
+  "DOWNFALL-LOC_JPN.header": "Japanese",
+  "DOWNFALL-LOC_JPN.names": "Ynishi\nKoyo\nmakunekoze\nKlingegame",
+
+  "DOWNFALL-LOC_ZHS.header": "Simplified Chinese",
+  "DOWNFALL-LOC_ZHS.names": "Tsukimaru Oshawott\nsongsi1111\nMA2077\nOrange2007\nlijikang364-cloud",
+  
+  "DOWNFALL-LOC_ITA.header": "Italian",
+  "DOWNFALL-LOC_ITA.names": "Luca Galimberti",
+
+  "DOWNFALL-LOC_RUS.header": "Russian",
+  "DOWNFALL-LOC_RUS.names": "Nitablade\nDuhastovich",
+
+  "DOWNFALL-LOC_DEU.header": "German",
+  "DOWNFALL-LOC_DEU.names": "lamali",
+
+  "DOWNFALL-LOC_PTB.header": "Brazilian Portuguese",
+  "DOWNFALL-LOC_PTB.names": "Diego Lincoln",
+
+  "DOWNFALL-STS1.header": "Original Downfall (StS 1)",
+  "DOWNFALL-STS1.names": "Created by MichaelMayhem\nThank you to everyone who created and worked on Downfall for the original Slay the Spire."
+}

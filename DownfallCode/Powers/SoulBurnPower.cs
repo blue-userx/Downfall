@@ -1,4 +1,3 @@
-using BaseLib.Abstracts;
 using BaseLib.Hooks;
 using Downfall.DownfallCode.Abstract;
 using Downfall.DownfallCode.Compatibility;
@@ -6,39 +5,53 @@ using Downfall.DownfallCode.Events;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Hooks;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.Vfx;
+using MegaCrit.Sts2.Core.TestSupport;
 using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Downfall.DownfallCode.Powers;
 
-public class SoulBurnPower : DownfallPowerModel, IHasSecondAmount
+public class SoulBurnPower : DownfallPowerModel
 {
     public SoulBurnPower() : base(PowerType.Debuff)
     {
         WithVar("Turns", 3);
     }
 
-    public string GetSecondAmount()
-    {
-        return $"{DynamicVars["Turns"].BaseValue}";
-    }
 
+    protected override int? SecondAmount => DynamicVars["Turns"].IntValue;
 
     public override IEnumerable<HealthBarForecastSegment> GetHealthBarForecastSegments(HealthBarForecastContext ctx)
     {
         if (Amount <= 0) yield break;
         if (DynamicVars["Turns"].BaseValue != 1) yield break;
-        yield return new HealthBarForecastSegment(
+        var a = (int)CompatibilityHook.ModifyDamage(Owner.CombatState!.RunState,
+            Owner.CombatState,
+            Owner,
+            Applier,
             Amount,
+            DamageProps.nonCardHpLoss,
+            null,
+            null,
+            ModifyDamageHookType.All,
+            CardPreviewMode.Normal,
+            out _);
+        yield return new HealthBarForecastSegment(
+            a,
             new Color("8AD974"),
             HealthBarForecastDirection.FromRight,
             2
         );
     }
 
-    protected override async Task AfterSideTurnStart(PlayerChoiceContext ctx, CombatSide side,
+    public override async Task AfterSideTurnStart(CombatSide side,
         IReadOnlyList<Creature> participants, ICombatState combatState)
     {
         if (side != Owner.Side)
@@ -46,6 +59,7 @@ public class SoulBurnPower : DownfallPowerModel, IHasSecondAmount
         DynamicVars["Turns"].UpgradeValueBy(-1);
         InvokeDisplayAmountChanged();
         if (DynamicVars["Turns"].BaseValue > 0) return;
+        var ctx = new BlockingPlayerChoiceContext();
         await Detonate(ctx, Applier);
     }
 
@@ -54,19 +68,43 @@ public class SoulBurnPower : DownfallPowerModel, IHasSecondAmount
         if (Owner.CombatState == null) return;
         var combatState = Owner.CombatState;
         var owner = Owner;
-        var targetAll = await DownfallHook.ShouldSoulburnDetonateTargetAll(Owner.CombatState, ctx, Owner);
+        var targetAll = DownfallHook.ShouldSoulburnDetonateTargetAll(Owner.CombatState, ctx, Owner);
+
+        var aliveApplier = applier?.IsAlive == true ? applier : null;
+        if (TestMode.IsOff) SfxCmd.Play("event:/sfx/characters/hexaghost-hexaghost/soulburn");
         if (targetAll)
-            await DownfallCreatureCmd.Damage(ctx, CombatState.HittableEnemies, keepOne ? Amount - 1 : Amount,
-                ValueProp.Unblockable | ValueProp.Unpowered, applier, null, null);
+        {
+            foreach (var target in CombatState.HittableEnemies) await SoulburnEffect(target);
+            await CompatibilityCreatureCmd.Damage(ctx, CombatState.HittableEnemies, keepOne ? Amount - 1 : Amount,
+                DamageProps.nonCardHpLoss, aliveApplier, null, null);
+        }
         else
-            await DownfallCreatureCmd.Damage(ctx, Owner, keepOne ? Amount - 1 : Amount,
-                ValueProp.Unblockable | ValueProp.Unpowered, applier, null, null);
+        {
+            await SoulburnEffect(Owner);
+            await CompatibilityCreatureCmd.Damage(ctx, Owner, keepOne ? Amount - 1 : Amount,
+                DamageProps.nonCardHpLoss, aliveApplier, null, null);
+        }
+
 
         if (keepOne)
-            await PowerCmd.ModifyAmount(ctx, this, 1 - Amount, applier, null);
+            await PowerCmd.ModifyAmount(ctx, this, 1 - Amount, aliveApplier, null);
         else
             await PowerCmd.Remove(this);
         await DownfallHook.AfterSoulburnDetonate(combatState, ctx, owner);
         await Cmd.CustomScaledWait(0.1f, 0.25f);
+    }
+    
+    public static Task SoulburnEffect(Creature? creature, float scale = 0.8f, bool silent = false)
+    {
+        if (creature == null) return Task.CompletedTask;
+        var child = NGroundFireVfx.Create(creature, VfxColor.Green);
+        if (child == null)
+            return Task.CompletedTask;
+        if (!silent && TestMode.IsOff)
+            SfxCmd.Play("event:/sfx/characters/attack_fire");
+        child.Scale = Vector2.One * scale;
+        var instance = NCombatRoom.Instance;
+        instance?.CombatVfxContainer.AddChildSafely(child);
+        return Task.CompletedTask;
     }
 }

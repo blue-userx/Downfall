@@ -2,6 +2,7 @@
 using Automaton.AutomatonCode.Core;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Commands;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -12,7 +13,6 @@ public class FlawlessArtifact : AutomatonCardModel
 {
     public FlawlessArtifact() : base(0, CardType.Power, CardRarity.Ancient, TargetType.Self)
     {
-        WithKeywords(CardKeyword.Retain);
         WithUpgradingCardTip<Constructor>();
         WithUpgradingCardTip<Separator>();
         WithUpgradingCardTip<Terminator>();
@@ -20,6 +20,7 @@ public class FlawlessArtifact : AutomatonCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
         await DownfallCardCmd.GiveCard<Constructor>(Owner, PileType.Hand, upgraded: IsUpgraded);
         await DownfallCardCmd.GiveCard<Separator>(Owner, PileType.Hand, upgraded: IsUpgraded);
         await DownfallCardCmd.GiveCard<Terminator>(Owner, PileType.Hand, upgraded: IsUpgraded);

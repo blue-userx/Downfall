@@ -1,7 +1,6 @@
 ﻿using Automaton.AutomatonCode.Cards.Status;
 using Automaton.AutomatonCode.Core;
-using Automaton.AutomatonCode.Extensions;
-using BaseLib.Commands;
+using Automaton.AutomatonCode.Piles;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
@@ -19,7 +18,7 @@ public class FindAndReplace : AutomatonCardModel
     public FindAndReplace() : base(0, CardType.Skill, CardRarity.Rare, TargetType.Self)
     {
         WithKeywords(CardKeyword.Exhaust);
-        this.WithTip<Error>();
+        WithTip<Error>();
         WithKeyword(CardKeyword.Retain, UpgradeType.Add);
     }
 
@@ -28,19 +27,18 @@ public class FindAndReplace : AutomatonCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         if (CombatState == null) return;
-        var choices = Owner.GetStash().Concat(Owner.GetDraw()).Concat(Owner.GetDiscard()).ToList();
-        /*var selected =
-            (await DownfallCardCmd.SelectFromCards(ctx, choices, DownfallCardSelectorPrefs.ToHandSelectionPrompt, this))
-            .FirstOrDefault();*/
         var prefs = new CardSelectorPrefs(DownfallCardSelectorPrefs.ToHandSelectionPrompt, 1, 1);
-        var pileTypes = choices.Where(e => e.Pile != null).Select(e => e.Pile!.Type).Distinct().ToArray();
-        
-        var selected = (await MultiPileCardSelect.Select(ctx, Owner, prefs, choices, pileTypes)).FirstOrDefault();
+
+        // The filter+pileTypes overload builds the card list itself, which - unlike handing it a
+        // pre-built list - sorts the draw pile by rarity/id instead of showing its true (secret)
+        // shuffle order.
+        var selected = (await DownfallCardSelectionCmd.MulitPileSelect(ctx, Owner, prefs, null,
+            StashPile.Stash, PileType.Draw, PileType.Discard)).FirstOrDefault();
         var sourcePile = selected?.Pile;
         if (sourcePile == null || selected == null) return;
-        var index = sourcePile._cards.IndexOf(selected);
+        var index = sourcePile.Cards.ToList().IndexOf(selected);
         await CardPileCmd.Add(selected, PileType.Hand);
         var error = CombatState.CreateCard<Error>(Owner);
-        await DownfallCardCmd.AddWithIndex(error, sourcePile, index);
+        await DownfallCardCmd.AddGeneratedCardToCombatAtIndex(error, sourcePile, index, Owner);
     }
 }

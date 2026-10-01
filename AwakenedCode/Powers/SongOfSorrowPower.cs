@@ -1,6 +1,5 @@
 ﻿using Awakened.AwakenedCode.Core;
 using MegaCrit.Sts2.Core.Commands;
-using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
@@ -11,18 +10,19 @@ namespace Awakened.AwakenedCode.Powers;
 
 public class SongOfSorrowPower : AwakenedPowerModel
 {
-    protected override async Task AfterCardGeneratedForCombat(PlayerChoiceContext ctx, CardModel card, Player? player)
+    public override async Task AfterCardGeneratedForCombat(CardModel card, Player? player)
     {
-        if (card is not Void || card.Owner != Owner.Player || LocalContext.NetId == null)
+        if (card is not Void || player?.Creature != Owner)
             return;
+        var ctx = new BlockingPlayerChoiceContext();
         Flash();
-        var currentEnemies = CombatState.Enemies.ToList();
+        var currentEnemies = CombatState.HittableEnemies.ToList();
         foreach (var enemy in currentEnemies)
             if (enemy is { IsHittable: true, IsAlive: true })
                 await CreatureCmd.Damage(ctx,
                     enemy,
                     Amount,
-                    ValueProp.Unblockable | ValueProp.Unpowered,
+                    DamageProps.nonCardHpLoss,
                     Owner);
     }
 }

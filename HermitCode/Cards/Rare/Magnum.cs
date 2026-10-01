@@ -20,7 +20,7 @@ public sealed class Magnum : HermitCardModel
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay play)
     {
-        var handCount = Owner.GetHand().Count;
+        var handCount = Owner.Hand.Count;
         var maxDiscard = Math.Min(DynamicVars.Cards.IntValue, handCount);
         if (maxDiscard == 0) return;
         var prefs = new CardSelectorPrefs(CardSelectorPrefs.DiscardSelectionPrompt, maxDiscard, maxDiscard);
@@ -28,7 +28,7 @@ public sealed class Magnum : HermitCardModel
             ctx, Owner, prefs, null, this)).ToList();
         if (selected.Count == 0) return;
         await CardCmd.Discard(ctx, selected);
-        await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
+        // await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
         await CommonActions.CardAttack(this, play, selected.Count).WithHermitGunHitFx().BeforeDamage(() =>
             {
                 HermitSfx.PlayGun1();

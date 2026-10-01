@@ -1,9 +1,8 @@
 using BaseLib.Commands;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
-using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.Compatibility;
 using Hexaghost.HexaghostCode.Core;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -14,8 +13,8 @@ public class ShieldOfNight : HexaghostCardModel
 {
     public ShieldOfNight() : base(2, CardType.Skill, CardRarity.Common, TargetType.Self)
     {
-        WithBlock(12, 3);
-        this.WithScry(3, 1);
+        WithBlock(12, 4);
+        WithScry(3, 1);
         WithTip(CardKeyword.Ethereal);
         WithTip(CardKeyword.Exhaust);
     }
@@ -27,6 +26,6 @@ public class ShieldOfNight : HexaghostCardModel
         await CommonActions.CardBlock(this, cardPlay);
         var result = await ScryCmd.Execute(ctx, this);
         foreach (var cardModel in result.Discarded.Where(card => card.Keywords.Contains(CardKeyword.Ethereal)))
-            await CardCmd.Exhaust(ctx, cardModel);
+            await CardCmdCompatibility.Exhaust(ctx, cardModel);
     }
 }

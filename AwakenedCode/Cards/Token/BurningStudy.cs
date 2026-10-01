@@ -24,6 +24,9 @@ public class BurningStudy : AwakenedCardModel, ISpell, IOnAwaken, ICustomTypePla
         WithPower<WeakPower>(1, 1);
         WithTags(AwakenedTag.Spell);
     }
+
+    protected override IEnumerable<string> ExtraRunAssetPaths => [(this as ISpell).SpellIconPath];
+
     public LocString GetTypePlaqueName => new("gameplay_ui", "AWAKENED-SPELL");
 
     public Task OnAwaken(PlayerChoiceContext ctx, Player player)
@@ -35,9 +38,11 @@ public class BurningStudy : AwakenedCardModel, ISpell, IOnAwaken, ICustomTypePla
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
+        await CreatureCmd.TriggerAnim(Owner.Creature, "Cast", Owner.Character.CastAnimDelay);
+        SfxCmd.Play("event:/sfx/characters/awakened-awakened/burning_study");
         if (CombatState == null) return;
         await CommonActions.ApplySelf<StrengthPower>(ctx, this);
-        foreach (var combatStateEnemy in CombatState.Enemies)
+        foreach (var combatStateEnemy in CombatState.HittableEnemies)
             await CommonActions.Apply<WeakPower>(ctx, combatStateEnemy, this);
     }
 }

@@ -5,6 +5,7 @@ using Guardian.GuardianCode.Events;
 using Guardian.GuardianCode.Extensions;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
@@ -19,10 +20,13 @@ public class RutileGem : GemModel
     protected override IEnumerable<DynamicVar> CanonicalVars => [new GemVar(1)];
     public override CardRarity Rarity => CardRarity.Uncommon;
 
-    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay)
+    protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay? cardPlay,
+        IEnumerable<Player> targetPlayers)
     {
-        var effect = GuardianHook.ModifyGemEffect(CombatState, this, DynamicVars.Gem().BaseValue, Card);
-        await PowerCmd.Apply<WeakPower>(ctx, CombatState.HittableEnemies, effect, Player.Creature,
+        var effect = GuardianHook.ModifyGemEffect(CombatState, this, DynamicVars.Gem.BaseValue, Card);
+        var target = CombatState.RunState.Rng.CombatTargets.NextItem(CombatState.HittableEnemies);
+        if (target == null) return;
+        await PowerCmd.Apply<WeakPower>(ctx, target, effect, Player.Creature,
             Card);
     }
 }

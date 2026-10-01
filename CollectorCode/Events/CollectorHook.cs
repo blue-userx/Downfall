@@ -1,4 +1,4 @@
-﻿using Downfall.DownfallCode.Events;
+﻿using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -9,24 +9,28 @@ namespace Collector.CollectorCode.Events;
 
 public static class CollectorHook
 {
-    public static int ModifyCollectorDoomDamage(ICombatState cs, Creature creature, int baseAmount)
+    public static int ModifyCollectorMiasmaIncrement(ICombatState cs, Creature creature, int baseAmount)
     {
-        return DownfallHook.Aggregate<IModifyCollectorDoomDamage, int>(cs, baseAmount,
-            (m, current) => m.ModifyCollectorDoomDamage(creature, current));
+        return HookUtils.Aggregate<IModifyCollectorMiasmaIncrement, int>(cs, baseAmount,
+            (m, current) => m.ModifyCollectorMiasmaIncrement(creature, current));
     }
 
-    public static bool PreventDoomRemoval(ICombatState cs, Creature creature)
+    public static Task AfterCardPyred(ICombatState cs, PlayerChoiceContext ctx, CardModel card, CardModel pyred)
     {
-        return DownfallHook.Any<IPreventDoomRemoval>(cs, m => m.PreventDoomRemoval(creature));
+        return HookUtils.Dispatch<IAfterCardPyred>(cs, ctx, m => m.AfterCardPyred(ctx, card, pyred));
     }
 
-    public static bool PreventCollectedDraw(ICombatState cs, Player player)
+    public static bool ShouldExhaustPyred(CardModel card, CardModel pyred)
     {
-        return DownfallHook.Any<IPreventCollectedDraw>(cs, m => m.PreventCollectedDraw(player));
+        return HookUtils.All<IShouldExhaustPyred>(card.CombatState!, e => e.ShouldExhaustPyred(card, pyred));
     }
 
-    public static Task OnPyre(ICombatState cs, PlayerChoiceContext ctx, CardModel card, CardModel pyred)
+    public static bool ShouldTorchheadTargetAll(Player player, out IEnumerable<IShouldTorchheadTargetAll> modifiers)
     {
-        return DownfallHook.Dispatch<IOnPyre>(cs, ctx, m => m.OnPyre(ctx, card, pyred));
+        if (player.Creature.CombatState != null)
+            return HookUtils.Any(player.Creature.CombatState!, e => e.ShouldTorchheadTargetAll(player), out modifiers);
+        modifiers = [];
+        return false;
     }
 }
+

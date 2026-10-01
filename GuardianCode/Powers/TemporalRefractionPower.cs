@@ -1,5 +1,4 @@
-﻿using BaseLib.Abstracts;
-using Guardian.GuardianCode.Core;
+﻿using Guardian.GuardianCode.Core;
 using Guardian.GuardianCode.Events;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -9,7 +8,7 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace Guardian.GuardianCode.Powers;
 
-public class TemporalRefractionPower : GuardianPowerModel, IModifyGemEffect, IHasSecondAmount, IAfterGemPlayed
+public class TemporalRefractionPower : GuardianPowerModel, IModifyGemEffect, IAfterGemPlayed
 {
     private int UsedAmount { get; set; }
 
@@ -21,10 +20,7 @@ public class TemporalRefractionPower : GuardianPowerModel, IModifyGemEffect, IHa
         return Task.CompletedTask;
     }
 
-    public string GetSecondAmount()
-    {
-        return $"{UsedAmount}";
-    }
+    public override int DisplayAmount => Amount - UsedAmount;
 
     public decimal ModifyGemEffect(GemModel model, decimal baseValue, CardModel? card)
     {

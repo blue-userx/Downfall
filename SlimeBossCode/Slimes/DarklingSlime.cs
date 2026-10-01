@@ -1,21 +1,36 @@
-﻿using MegaCrit.Sts2.Core.Animation;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+﻿using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.ValueProps;
+using SlimeBoss.SlimeBossCode.Events;
+using SlimeBoss.SlimeBossCode.Extensions;
 
 namespace SlimeBoss.SlimeBossCode.Slimes;
 
-[Obsolete]
-public class DarklingSlime : SlimeModel
+public class DarklingSlime : SlimeModel, IAfterCommand
 {
-    public override SlimeType SlimeType => SlimeType.None;
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        new DamageVar(3, DamageProps.nonCardUnpowered)
+    ];
 
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
+    public override SlimeType SlimeType => SlimeType.Counter;
+
+    public override Task Command(PlayerChoiceContext ctx, Creature? forcedTarget = null)
     {
-        return SetupAnimationState(controller, "Idle", hitName: "Hit", attackName: "Attack");
+        var attack = DamageCmd.Attack(DynamicVars.Damage.BaseValue).WithHitCount(SlimeAmount).FromSlime(this);
+        attack = forcedTarget != null ? attack.Targeting(forcedTarget) : attack.TargetingRandomOpponents(CombatState);
+        return attack.Execute(ctx);
     }
-
-    public override Task Command(PlayerChoiceContext ctx)
+    
+    public async Task AfterCommand(PlayerChoiceContext ctx, Player player, SlimeModel slime, CardModel? source, bool isAutomatic)
     {
-        throw new Exception();
+        if (player.Creature != PetOwner || slime == this || slime is DarklingSlime || isAutomatic) return;
+        await DamageCmd.Attack(DynamicVars.Damage.BaseValue)
+            .FromSlime(this)
+            .TargetingRandomOpponents(CombatState).WithHitCount(SlimeAmount).Execute(ctx);
     }
 }

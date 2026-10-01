@@ -1,8 +1,9 @@
-﻿using BaseLib.Utils;
+﻿using Downfall.DownfallCode.Extensions;
+using BaseLib.Utils;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using Snecko.SneckoCode.Core;
-using Snecko.SneckoCode.Extensions;
+using Snecko.SneckoCode.CustomEnums;
 
 namespace Snecko.SneckoCode.Cards.Common;
 
@@ -11,14 +12,20 @@ public class Reroll : SneckoCardModel
 {
     public Reroll() : base(1, CardType.Skill, CardRarity.Common, TargetType.Self)
     {
-        WithBlock(6 ,3);
-        this.WithMuddle(1, 1);
+        WithBlock(6, 3);
+        WithKeyword(SneckoKeywords.Muddle);
     }
-    
+
 
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardBlock(this, cardPlay);
-        await SneckoCmd.MuddleHandCards(ctx, this);
+        var candidates = Owner.Hand.Where(e => !e.EnergyCost.CostsX).ToList();
+        if (candidates.Count == 0) return;
+        var maxCost = candidates.Max(e => e.EnergyCost.GetAmountToSpend());
+        var highestCostCards = candidates.Where(e => e.EnergyCost.GetAmountToSpend() == maxCost).ToList();
+        var card = RunState!.Rng.CombatCardSelection.NextItem(highestCostCards);
+        if (card == null) return;
+        await SneckoCmd.Muddle(ctx, card, this);
     }
 }

@@ -1,6 +1,5 @@
-﻿using MegaCrit.Sts2.Core.Animation;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
-using MegaCrit.Sts2.Core.Commands;
+﻿using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Localization.DynamicVars;
@@ -14,28 +13,28 @@ namespace SlimeBoss.SlimeBossCode.Slimes;
 
 public class LeechingSlime : SlimeModel
 {
-    public override SlimeType SlimeType => SlimeType.Normal;
-
-    public override CreatureAnimator GenerateAnimator(MegaSprite controller)
-    {
-        return SetupAnimationState(controller, "idle", hitName: "damage");
-    }
-    
-    protected override IEnumerable<DynamicVar> CanonicalVars => [
-        new DamageVar(1, ValueProp.Move),
-        new SlimeSecondaryVar(3)
+    protected override IEnumerable<DynamicVar> CanonicalVars =>
+    [
+        new DamageVar(3, DamageProps.nonCardUnpowered),
+        new SlimeSecondaryVar(1)
     ];
+
     public override IEnumerable<IHoverTip> ExtraTips =>
     [
-        HoverTipFactory.Static(StaticHoverTip.Block)
+        HoverTipFactory.FromPower<WeakPower>()
     ];
 
-    public override async Task Command(PlayerChoiceContext ctx)
-    {
-        await DamageCmd.Attack(DynamicVars.Damage.BaseValue).FromSlime(this).TargetingRandomOpponents(CombatState).Execute(ctx);
+    protected override string? SkinName => "shield";
 
-        var original = DynamicVars.Slime().IntValue;
+    public override async Task Command(PlayerChoiceContext ctx, Creature? forcedTarget = null)
+    {
+        var attack = DamageCmd.Attack(DynamicVars.Damage.BaseValue).FromSlime(this);
+        attack = forcedTarget != null ? attack.Targeting(forcedTarget) : attack.TargetingRandomOpponents(CombatState);
+        var cmd = await attack.Execute(ctx);
+        
+        var target = cmd.Results.SelectMany(e => e).Select(e => e.Receiver);
+        var original = DynamicVars.Slime.IntValue;
         var modified = SlimeBossHook.ModifySecondarySlimeEffects(CombatState, original, out _, this);
-        await CreatureCmd.GainBlock(PetOwner, modified, ValueProp.Move, null);
+        await PowerCmd.Apply<WeakPower>(ctx, target, modified, Creature, null);
     }
 }

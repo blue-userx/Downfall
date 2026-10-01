@@ -1,5 +1,6 @@
 using BaseLib.Utils;
 using Hexaghost.HexaghostCode.Core;
+using Hexaghost.HexaghostCode.CustomEnums;
 using Hexaghost.HexaghostCode.Events;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
@@ -13,22 +14,15 @@ using MegaCrit.Sts2.Core.ValueProps;
 namespace Hexaghost.HexaghostCode.Relics;
 
 [Pool(typeof(HexaghostRelicPool))]
-public class SpiritBrand() : HexaghostRelicModel(RelicRarity.Starter), IAfterGhostflameIgnited
+public class SpiritBrand : HexaghostRelicModel, IAfterGhostflameIgnited
 {
-
-    /*
-    public async Task AfterGhostflameIgnited(PlayerChoiceContext ctx, Player player, GhostflameModel flame, int index)
+    public SpiritBrand() : base(RelicRarity.Starter)
     {
-        if (player != Owner) return;
-        Flash();
-        await CreatureCmd.GainBlock(Owner.Creature, 2, ValueProp.Move | ValueProp.Unpowered, null, true);
+        WithTip(HexaghostTip.Ignite);
+        WithBlock(3);
     }
-    */
 
-    public override RelicModel GetUpgradeReplacement()
-    {
-        return ModelDb.Relic<MarkOfTheEther>();
-    }
+
     private bool UsedThisTurn { get; set; }
 
     public async Task AfterGhostflameIgnited(PlayerChoiceContext ctx, Player player, GhostflameModel flame, int index)
@@ -37,10 +31,16 @@ public class SpiritBrand() : HexaghostRelicModel(RelicRarity.Starter), IAfterGho
         UsedThisTurn = true;
         Flash();
         Status = RelicStatus.Normal;
-        await CreatureCmd.GainBlock(Owner.Creature, 3, ValueProp.Move | ValueProp.Unpowered, null, true);
+        await CreatureCmd.GainBlock(Owner.Creature, DynamicVars.Block.IntValue, BlockProps.nonCardUnpowered, null, true);
     }
-    
-    protected override Task AfterSideTurnStart(PlayerChoiceContext ctx, CombatSide side,
+
+
+    public override RelicModel GetUpgradeReplacement()
+    {
+        return ModelDb.Relic<MarkOfTheEther>();
+    }
+
+    public override Task AfterSideTurnStart(CombatSide side,
         IReadOnlyList<Creature> participants,
         ICombatState combatState)
     {

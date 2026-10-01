@@ -4,8 +4,8 @@ using Awakened.AwakenedCode.Interfaces;
 using BaseLib.Utils;
 using Downfall.DownfallCode.Artists;
 using Downfall.DownfallCode.Commands;
+using Downfall.DownfallCode.Compatibility;
 using MegaCrit.Sts2.Core.CardSelection;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 
@@ -18,7 +18,7 @@ public class Dejection : AwakenedCardModel
     {
         WithDamage(7, 3);
         WithTip(CardKeyword.Exhaust);
-        this.WithTip<Ceremony>();
+        WithTip<Ceremony>();
     }
 
     protected override Artist Artist => Artist.Get<Opal>();
@@ -26,10 +26,10 @@ public class Dejection : AwakenedCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay cardPlay)
     {
         await CommonActions.CardAttack(this, cardPlay).Execute(ctx);
-        var selected = (await DownfallCardCmd.SelectFromHand(ctx, CardSelectorPrefs.ExhaustSelectionPrompt, this))
+        var selected = (await DownfallCardSelectionCmd.SelectFromHand(ctx, CardSelectorPrefs.ExhaustSelectionPrompt, this))
             .FirstOrDefault();
         if (selected == null) return;
-        await CardCmd.Exhaust(ctx, selected);
+        await CardCmdCompatibility.Exhaust(ctx, selected);
         if (selected is ISpell) await DownfallCardCmd.GiveCard<Ceremony>(Owner, PileType.Hand);
     }
 }

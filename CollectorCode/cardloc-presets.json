@@ -5,7 +5,9 @@
     {
       "id": "card",
       "markers": [
-        "CollectorCardModel"
+        "CollectorCardModel",
+        "Collectible",
+        "ActsFromThePastCard"
       ],
       "fields": [
         {
@@ -49,6 +51,11 @@
         },
         {
           "name": "selectionScreenPrompt",
+          "file": "powers.json",
+          "optional": true
+        },
+        {
+          "name": "remoteDescription",
           "file": "powers.json",
           "optional": true
         }
@@ -172,28 +179,31 @@
           "optional": false
         }
       ]
+    },
+    {
+      "id": "potion",
+      "markers": [
+        "CollectorPotionModel"
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "file": "potions.json",
+          "optional": false
+        },
+        {
+          "name": "description",
+          "file": "potions.json",
+          "optional": false
+        },
+        {
+          "name": "selectionScreenPrompt",
+          "file": "potions.json",
+          "optional": true
+        }
+      ]
     }
   ],
-  "pinnedColors": [
-    {
-      "tag": "gold"
-    },
-    {
-      "tag": "blue"
-    },
-    {
-      "tag": "afterlife"
-    },
-    {
-      "hex": "#00B888",
-      "label": "#00B888"
-    }
-  ],
-  "customTags": [
-    {
-      "tag": "afterlife",
-      "label": "Afterlife",
-      "color": "#E087A4"
-    }
-  ]
+  "pinnedColors": [],
+  "customTags": []
 }

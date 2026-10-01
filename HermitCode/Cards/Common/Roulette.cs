@@ -11,7 +11,7 @@ public sealed class Roulette : HermitCardModel
 {
     public Roulette() : base(2, CardType.Attack, CardRarity.Common, TargetType.AnyEnemy)
     {
-        WithDamage(16, 4);
+        WithDamage(16, 6);
     }
 
     protected override Artist Artist => Artist.Get<AlexMdle>();
@@ -19,14 +19,14 @@ public sealed class Roulette : HermitCardModel
     protected override async Task OnPlayInternal(PlayerChoiceContext ctx, CardPlay play)
     {
         HermitSfx.PlaySpin();
-        await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
+        // await CreatureCmd.TriggerAnim(Owner.Creature, "Attack", Owner.Character.AttackAnimDelay);
         await CommonActions.CardAttack(this, play).WithHermitGunHitFx().BeforeDamage(() =>
             {
                 HermitSfx.PlayGun2();
                 return Task.CompletedTask;
             })
             .Execute(ctx);
-        var hand = Owner.GetHand();
+        var hand = Owner.Hand;
         var handSize = hand.Count;
         await CardCmd.DiscardAndDraw(ctx, hand, handSize);
     }

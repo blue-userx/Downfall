@@ -1,8 +1,6 @@
-using System.Reflection;
-using Downfall.DownfallCode;
-using Downfall.DownfallCode.Localization;
+﻿using Downfall.DownfallCode.Localization;
 using Downfall.DownfallCode.Utils;
-using Godot;
+using Downfall.DownfallCode.Voting;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using Snecko.SneckoCode.Core;
@@ -11,7 +9,7 @@ using Logger = MegaCrit.Sts2.Core.Logging.Logger;
 namespace Snecko.SneckoCode;
 
 [ModInitializer(nameof(Initialize))]
-public partial class SneckoMainFile : Node
+public static class SneckoMainFile
 {
     public const string ModId = "Snecko"; //At the moment, this is used only for the Logger and harmony names.
 
@@ -20,7 +18,23 @@ public partial class SneckoMainFile : Node
 
     public static void Initialize()
     {
-        CardExecutionRegistry.RegisterAfter(SneckoCardEffectHandler.DoAfterOnPlayInternal);
         BundledSubmodLocRegistry.Register(ModId);
+        VotingPoolRegistry.Register<SneckoCardPool>(VotingPool.Snecko, ModId);
+
+
+        /*
+        ModPatcher.Create(ModId, Logger)
+            .Add(typeof(SneckoSpiritDialoguePatch))
+            .Add(typeof(SneckoSpiritEntryPatch))
+            .Add(typeof(SneckoSpiritGateResetPatch))
+            .Add(typeof(SneckoSpiritAutoSkipPatch))
+            .PatchAll();*/
+
+        FormBoneRegistry.RegisterVoidForm<Core.Snecko>("eye");
+        FormBoneRegistry.RegisterSerpentForm<Core.Snecko>("spine5");
+        FormBoneRegistry.RegisterReaperForm<Core.Snecko>("spine10");
+        FormBoneRegistry.RegisterEchoForm<Core.Snecko>("spine10");
+
+        //RunManager.Instance.RunStarted += _ => SneckoSpiritGate.Reset();
     }
 }
